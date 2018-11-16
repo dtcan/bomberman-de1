@@ -19,4 +19,4 @@ git clone https://github.com/dtcan/bomberman-de1.git
 12. Click the 'Start' button to run the game!
 
 ## Compatibility
-This project was made for an 5CSEMA5F31C6 (Altera DE1 SOC) device, but it should work with any device that is supported by Quartus Prime. It may also work with any FPGA that can work with Verilog, although the compilation process may differ.
+This project was made for an 5CSEMA5F31C6 (Altera DE1 SOC) device, but it should work with any device that is supported by Quartus Prime. It may also work with any FPGA that can work with Verilog files, although the compilation process may differ.
