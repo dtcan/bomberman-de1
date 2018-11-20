@@ -1,0 +1,2 @@
+module bomberman_control
+endmodule
