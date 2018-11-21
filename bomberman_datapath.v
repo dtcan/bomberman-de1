@@ -1,69 +1,4 @@
 module bomberman_datapath();
-
-	
-	
-module datapath(
-	x_out, y_out,
-	colour_out,
-	draw_complete,
-	clock,
-	resetn,
-	colour_in,
-	ld_colour,
-	draw_enable,
-	erase_enable
-	);
-	
-	output [7:0] x_out;
-	output [6:0] y_out;
-	output [2:0] colour_out;
-	output draw_complete;
-	
-	input [2:0] colour_in;
-	input clock, resetn, ld_colour, draw_enable, erase_enable;
-
-	// input registers
-	reg [7:0] X;
-	reg [6:0] Y;
-	reg [2:0] COLOUR;
-	
-	// direction registers
-	reg dir_X, dir_Y; // for Y: 0 - Up, 1 - Down. for X: 0 - Left, 1 - Right.
-	
-	// output registers
-	reg [7:0] x_out;
-	reg [6:0] y_out;
-	reg [2:0] colour_out;
-	
-	// counter output wire
-	wire [7:0] wire_x;
-	wire [6:0] wire_y;
-	wire [3:0] count_out;
-	
-	counter_X cX(
-		.x_out(wire_x),
-		.clock(clock),
-		.resetn(resetn),
-		.enable(update),
-		.dir(dir_X)
-		);
-		
-	counter_Y cY(
-		.y_out(wire_y),
-		.clock(clock),
-		.resetn(resetn),
-		.enable(update),
-		.dir(dir_Y)
-		);
-		
-	// instantiate counter
-	counter c(
-		.out(count_out),
-		.finished(draw_complete),
-		.clock(clock),
-		.resetn(resetn),
-		.enable((draw_enable | erase_enable))
-		);
 	
 	// input and direction registers and their respective logic.
 	always @ (posedge clock, negedge resetn)
@@ -120,84 +55,93 @@ module datapath(
 		
 endmodule
 
-// counter module for X coordinate.
-module counter_X(x_out, clock, resetn, enable, dir);
+// counter module for X/Y coordinate given start_coord, min_coord, max_coord, direction and increment.
+// 0: decrease coord by increment. 1: increase coord by increment.
+// active high reset.
+module coordinate_counter(
+	output reg [8:0] next_coord,
+
+	input reg [8:0] start_coord,
+	input reg [8:0] min_coord, max_coord,
+	input [5:0] increment,
+	input clock, reset, enable, direction
+	);
 	
-	output [7:0] x_out;
-	
-	input clock, resetn, enable; 
-	input dir; // horizontal direction, 0 for left and 1 for right.
-	
-	reg [7:0] x_out;
-	
-	always @ (posedge clock, negedge resetn)
+	always @ (posedge clock, posedge reset)
 		begin
-			// reset to position 0.
-			if (!resetn)
+			// reset to start_coord.
+			if (reset)
 				begin
-					x_out <= 0;
+					next_coord <= start_coord;
 				end
-			else if (enable)
-				if (dir)
-					x_out <= x_out + 1;
-				else
-					x_out <= x_out - 1;
+			else if (enable & (next_coord >= min_coord) & (next_coord <= max_coord))
+				next_coord <= direction ? (next_coord + increment) : (next_coord - increment);
+//				if (direction)
+//					next_coord <= next_coord + increment;
+//				else
+//					next_coord <= next_coord - increment;
 		end
 		
 endmodule
 
-// counter module for y coordinate.
-module counter_Y(y_out, clock, resetn, enable, dir);
+coordinate_counter player_1_X(
+	.next_coord(p1_X),
+	.start_coord(9'd72),
+	.max_coord(9'd232),
+	.increment(p1_speed),
+	.clock(clock),
+	.reset(reset),
+	.enable(),
+	.direction(p1_X_dir)
+	);
 	
-	output [6:0] y_out;
+coordinate_counter player_1_Y(
+	.next_coord(p1_Y),
+	.start_coord(9'd96),
+	.max_coord(9'd232),
+	.increment(p1_speed),
+	.clock(clock),
+	.reset(reset),
+	.enable(),
+	.direction(p1_Y_dir)
+	);
 	
-	input clock, resetn, enable; 
-	input dir; // vertical direction, 0 for up and 1 for down.
+coordinate_counter player_2_X(
+	.next_coord(p2_X),
+	.start_coord(9'd232),
+	.increment(speed),
+	.clock(clock),
+	.reset(reset),
+	.enable(),
+	.direction(p2_X_dir)
+	);
 	
-	reg [6:0] y_out;
+coordinate_counter player_2_Y(
+	.next_coord(p2_Y),
+	.start_coord(9'd96),
+	.increment(speed),
+	.clock(clock),
+	.reset(reset),
+	.enable(),
+	.direction(p2_Y_dir)
+	);
 	
-	always @ (posedge clock, negedge resetn)
-		begin
-			// reset to position 60.
-			if (!resetn)
-				begin
-					y_out <= 7'd60;
-				end
-			else if (enable)
-				if (!dir)
-					y_out <= y_out + 1;
-				else
-					y_out <= y_out - 1;
-		end
-		
-endmodule		
-
-// counter module for datapath.
-module counter(out, finished, clock, resetn, enable);
+coordinate_counter tile_X(
+	.next_coord(t_X),
+	.start_coord(9'd72),
+	.increment(5'd16),
+	.clock(clock),
+	.reset(reset),
+	.enable(),
+	.direction(1)
+	);
 	
-	output [3:0] out;
-	output finished;
-	
-	input clock, resetn, enable;
-	
-	reg [3:0] out;
-	
-	always @ (posedge clock, negedge resetn)
-		begin
-			if (!resetn)
-				begin
-					out <= 0;
-				end
-			// count to 16 if enable.
-			else if (enable)
-				if (out == 4'd15)
-					begin
-						out <= 0;
-					end
-				else
-					out <= out + 1;
-		end
-		
-		assign finished = (out == 4'd15) ? 1 : 0;
-	
-endmodule
+coordinate_counter tile_Y(
+	.next_coord(t_Y),
+	.start_coord(9'd96),
+	.increment(5'd16),
+	.clock(clock),
+	.reset(reset),
+	.enable(),
+	.direction(1)
+	);
