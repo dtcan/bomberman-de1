@@ -3,8 +3,8 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 	input [1:0] memory_select;
 	input [3:0] tile_select;
 	output reg write_en, finished;
-	output [14:0] colour;
-	output [16:0] offset;
+	output reg [14:0] colour;
+	output reg [16:0] offset;
 	
 	localparam WIDTH = 320, HEIGHT = 240; // Still have to go change bit-widths when changing these!
 	
@@ -26,6 +26,8 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 		.clk(clk),
 		.reset_n(reset_n),
 		.enable(enable_count & (memory_select != 2'b11)),
+		.max_x(WIDTH),
+		.max_y(HEIGHT),
 		.q_x(offset_x),
 		.q_y(offset_y)
 	);
@@ -40,9 +42,9 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 		endcase
 		
 		if(memory_select == 2'b11)
-			offset = {9'd0, offset_t}
+			offset = {9'd0, offset_t};
 		else
-			offset = {offset_y, offset_x}
+			offset = {offset_y, offset_x};
 	end
 	
 	altsyncram	TitleScreen (
@@ -114,13 +116,14 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 		TileSet.INIT_FILE = "tileset.mif";
 
 	reg [3:0] Q, Qn;
-	localparam S_RESET     = 3'b000,
-	           S_WAIT      = 3'b001,
-	           S_SELECT    = 3'b010,
-	           S_READ      = 3'b011,
-	           S_DRAW      = 3'b100,
-	           S_INCREMENT = 3'b101,
-	           S_FINISH    = 3'b110;
+	localparam S_RESET          = 3'b000,
+	           S_WAIT           = 3'b001,
+	           S_SELECT         = 3'b010,
+	           S_READ           = 3'b011,
+	           S_DRAW           = 3'b100,
+	           S_INCREMENT      = 3'b101,
+	           S_INCREMENT_HOLD = 3'b110,
+	           S_FINISH         = 3'b111;
 	
 	always @(*)
 	begin
@@ -130,7 +133,8 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 			S_SELECT: Qn = S_READ;
 			S_READ: Qn = S_DRAW;
 			S_DRAW: Qn = S_INCREMENT;
-			S_INCREMENT: Qn = |offset ? S_READ : S_FINISH;
+			S_INCREMENT: Qn = S_INCREMENT_HOLD;
+			S_INCREMENT_HOLD: Qn = |offset ? S_READ : S_FINISH;
 			S_FINISH: Qn = S_RESET;
 		endcase
 	end
@@ -148,14 +152,14 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 			S_SELECT:
 			begin
 				if(memory_select == 2'b11)
-					adr = ({tile_select[3:2],offset[7:4]} * WIDTH) + {tile_select[1:0], offset[3:0]}
+					adr = ({tile_select[3:2],offset[7:4]} * WIDTH) + {tile_select[1:0], offset[3:0]};
 				else
-					adr = (offset_y * WIDTH) + offset_x
+					adr = (offset_y * WIDTH) + offset_x;
 			end
 			S_DRAW: write_en = 1;
 			S_INCREMENT: enable_count = 1;
 			S_FINISH: finished = 1;
-			
+		endcase
 	end
 	
 	always @(posedge clk)
@@ -196,15 +200,16 @@ module count_xy(clk, reset_n, enable, max_x, max_y, q_x, q_y);
 		end
 		else if(enable)
 		begin
-			q_x <= q_x + 1;
-			if(q_x == WIDTH)
-				q_x <= 0;
-			if(q_x == 0)
+			if(q_x == max_x - 1)
 			begin
-				q_y <= q_y + 1;
-				if(q_y == HEIGHT)
+				q_x <= 0;
+				if(q_y == max_y - 1)
 					q_y <= 0;
+				else
+					q_y <= q_y + 1;
 			end
+			else
+				q_x <= q_x + 1;
 		end
 	end
 endmodule
