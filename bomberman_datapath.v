@@ -1,8 +1,6 @@
 module bomberman_datapath();
 
-	// load game_stage map from .mem file into memory.
-	reg [3:0] game_stage [0:120];
-	inital $readmemh("game_stage_1.mem", game_stage);
+	
 	
 module datapath(
 	x_out, y_out,
