@@ -110,6 +110,45 @@ module bomberman
    // Instansiate datapath
 	
 	bomberman_datapath dp(
+		.X_out(),
+		.Y_out(),
+		.finished(finished),
+		.all_tiles_drawn(all_tiles_drawn),
+		.game_over(game_over),
+		.write_en(write_en),
+		.memory_select(memory_select),
+		.copy_enable(copy_enable),
+		.tc_enable(tc_enable),
+		.player_reset(player_reset),
+		.stage_reset(stage_reset),
+		.draw_t(draw_t),
+		.draw_p1(draw_p1),
+		.draw_p2(draw_p2),
+		.p1_bomb(p1_bomb),
+		.p1_xdir(p1_xdir),
+		.p1_xmov(p1_xmov),
+		.p1_ydir(p1_ydir),
+		.p1_ymov(p1_ymov),
+		.p2_bomb(p2_bomb),
+		.p2_xdir(p2_xdir),
+		.p2_xmov(p2_xmov),
+		.p2_ydir(p2_ydir),
+		.p2_ymov(p2_ymov),
+		.clock(CLOCK_50),
+		.reset(reset)
 	);
     
+	 module bomberman_datapath(
+	output reg [8:0] X_out, Y_out,
+	output finished, all_tiles_drawn, game_over,
+	output write_en,
+	
+	input [1:0] memory_select,
+	input copy_enable, tc_enable,
+	input player_reset, stage_reset,
+	input draw_t, draw_p1, draw_p2,
+	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
+	input p2_bomb, p2_xdir, p2_xmov, p2_ydir, p2_ymov,
+	input clock, reset
+	); 
 endmodule

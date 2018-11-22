@@ -1,6 +1,7 @@
 module bomberman_datapath(
 	output reg [8:0] X_out, Y_out,
 	output finished, all_tiles_drawn, game_over,
+	output write_en,
 	
 	input [1:0] memory_select,
 	input copy_enable, tc_enable,
@@ -19,9 +20,11 @@ module bomberman_datapath(
 	
 	// load game_stage map from .mem file into memory.
 	reg [3:0] game_stage_initial [0:120];
-	// for use in game.
-	reg [3:0] game_stage_current [0:120];
+//	// for use in game.
+//	reg [3:0] game_stage_current [0:120];
 	initial $readmemh("game_stage_1.mem", game_stage_initial);
+	
+	wire all_tiles_counted;
 	
 	coordinate_counter player_1_X(
 		.next_coord(p1_X),
@@ -79,12 +82,22 @@ module bomberman_datapath(
 		.enable(tc_enable)
 		);
 	
-	copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_en, finished);
+	copy(
+		.clk(clock),
+		.reset_n(reset),
+		.go(copy_enable),
+		.memory_select(memory_select),
+		.tile_select((game_stage_initial [tile_count])),
+		.colour(colour),
+		.offset(offset),
+		.write_en(write_en),
+		.finished(finished)
+		);
 	
 	// input and direction registers and their respective logic.
 	always @ (posedge clock, posedge reset)
 		begin
-			if (resetn)
+			if (reset)
 				begin
 					X <= 9'd0;
 					Y <= 8'd0;
@@ -99,12 +112,12 @@ module bomberman_datapath(
 					else if (draw_p1)
 						begin
 							X <= p1_X;
-							Y <= p1_Y [8:0];
+							Y <= p1_Y [7:0];
 						end
 					else if (draw_p2)
 						begin
 							X <= p2_X;
-							Y <= p2_Y [8:0];
+							Y <= p2_Y [7:0];
 						end
 					else
 						begin
@@ -118,20 +131,19 @@ module bomberman_datapath(
 		begin
 			if (reset)
 				begin
-					x_out <= 8'd0;
-					y_out <= 7'd60;
+					X_out <= 9'd0;
+					Y_out <= 8'd60;
 					colour_out <= 3'd0;
 				end
-			else if (draw_enable | erase_enable) 
+			else if (draw_t | draw_p1 | draw_p2) 
 				// add last 2 least significant bits of counter output to X coordinate.
 				// add first 2 most significant bits of counter output to Y coordinate.
 				begin
-					x_out <= X + count_out[1:0];
-					y_out <= Y + count_out[3:2];
+					X_out <= X + offset[8:0];
+					Y_out <= Y + offset[16:9];
 					colour_out <= COLOUR;
 				end
 		end
-		
 endmodule
 
 // counter module for X/Y coordinate given start_coord, min_coord, max_coord, direction and increment.
