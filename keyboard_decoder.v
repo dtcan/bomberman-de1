@@ -10,7 +10,7 @@ module keyboard_decoder(
 	
 	inout PS2_CLK, PS2_DAT,
 	
-	input clock, reset,
+	input clock, reset
 	);
 	
 	wire w, a, s, d, space;

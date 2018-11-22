@@ -28,8 +28,9 @@ module bomberman_datapath(
 //	reg [3:0] game_stage_current [0:120];
 	initial $readmemh("game_stage_1.mem", game_stage_initial);
 	
-	wire [6:0] tile_count;
-	wire all_tiles_counted;
+	wire [3:0] tile_count_x, tile_count_y;
+	wire all_tiles_counted, all_tiles_counted_x, all_tiles_counted_y;
+	assign all_tiles_counted = (all_tiles_counted_x & all_tiles_counted_y);
 	
 	coordinate_counter player_1_X(
 		.next_coord(p1_X),
@@ -79,12 +80,20 @@ module bomberman_datapath(
 		.direction(p2_ydir)
 		);
 		
-	tile_counter tc(
-		.tile_count(tile_count),
-		.all_tiles_counted(all_tiles_counted),
+	tile_counter tc_x(
+		.tile_count(tile_count_x),
+		.all_tiles_counted(all_tiles_counted_x),
 		.clock(clock),
 		.reset(reset),
 		.enable(tc_enable)
+		);
+	
+	tile_counter tc_y(
+		.tile_count(tile_count_y),
+		.all_tiles_counter(all_tiles_counted_y),
+		.clock(clock),
+		.reset(reset),
+		.enable(all_tiles_counted_x)
 		);
 	
 	copy c0(
@@ -111,8 +120,8 @@ module bomberman_datapath(
 				begin
 					if (draw_t)
 						begin
-							X <= X + {tile_count[3:0], 4'b0000};
-							Y <= Y + {tile_count[6:4], 4'b0000};
+							X <= 9'd72 + {1b'0, tile_count_x, 4'b0000};
+							Y <= 8'd32 + {tile_count_y, 4'b0000};
 						end
 					else if (draw_p1)
 						begin
@@ -184,7 +193,7 @@ endmodule
 // active-high reset.
 module tile_counter(tile_count, all_tiles_counted, clock, reset, enable);
 	
-	output reg [6:0] tile_count;
+	output reg [3:0] tile_count;
 	output all_tiles_counted;
 	
 	input clock, reset, enable;
@@ -195,9 +204,9 @@ module tile_counter(tile_count, all_tiles_counted, clock, reset, enable);
 				begin
 					tile_count <= 0;
 				end
-			// count to 121 - 1
+			// count to 10 - 1
 			else if (enable)
-				if (tile_count == 7'd120)
+				if (tile_count == 4'd10)
 						tile_count <= 0;
 				else
 						tile_count <= tile_count + 1;
