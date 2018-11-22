@@ -17,6 +17,8 @@ module bomberman
 
 	input	CLOCK_50;				//	50 MHz
 	input [0:0] KEY;
+	input PS2_CLK;
+	input ps2_DAT;
 	
 	// Do not change the following outputs
 	output			VGA_CLK;   				//	VGA Clock
@@ -37,9 +39,10 @@ module bomberman
 	wire finished, all_tiles_drawn, game_over;
 	
 	// wires for datapath/VGA inputs/ outputs.
-	wire [4:0] colour;
-	wire [7:0] x;
-	wire [6:0] y;
+	wire [2:0] colour;
+	wire [8:0] x;
+	wire [7:0] y;
+	wire write_en;
 	
 	wire reset;
 	assign reset = ~KEY[0];
@@ -48,12 +51,12 @@ module bomberman
 	// Define the number of colours as well as the initial background
 	// image file (.MIF) for the controller.
 	vga_adapter VGA(
-			.resetn(resetn),
+			.resetn(reset),
 			.clock(CLOCK_50),
 			.colour(colour),
 			.x(x),
 			.y(y),
-			.plot(writeEn),
+			.plot(write_en),
 			/* Signals for the DAC to drive the monitor. */
 			.VGA_R(VGA_R),
 			.VGA_G(VGA_G),
@@ -72,7 +75,7 @@ module bomberman
 	// for the VGA controller, in addition to any other functionality your design may require.
 	
 	keyboard_decoder kd(
-		.p1_bomb(pl_bomb),
+		.p1_bomb(p1_bomb),
 		.p2_bomb(p2_bomb),
 		.p1_xdir(p1_xdir),
 		.p2_xdir(p2_xdir),
@@ -84,7 +87,7 @@ module bomberman
 		.p2_ymov(p2_ymov),
 		.PS2_CLK(PS2_CLK),
 		.PS2_DAT(PS2_DAT),
-		.clock(CLOCK50),
+		.clock(CLOCK_50),
 		.reset(reset)
 	);
 
@@ -101,17 +104,18 @@ module bomberman
 		.draw_p2(draw_p2),
 		.go(p1_bomb),
 		.finished(finished),
-		.add_tiles_drawn(all_tiles_drawn),
+		.all_tiles_drawn(all_tiles_drawn),
 		.game_over(game_over),
-		.clock(CLOCK[50]),
+		.clock(CLOCK_50),
 		.reset(reset)
 	);
 
    // Instansiate datapath
 	
 	bomberman_datapath dp(
-		.X_out(),
-		.Y_out(),
+		.X_out(x),
+		.Y_out(y),
+		.colour(colour),
 		.finished(finished),
 		.all_tiles_drawn(all_tiles_drawn),
 		.game_over(game_over),
@@ -137,18 +141,5 @@ module bomberman
 		.clock(CLOCK_50),
 		.reset(reset)
 	);
-    
-	 module bomberman_datapath(
-	output reg [8:0] X_out, Y_out,
-	output finished, all_tiles_drawn, game_over,
-	output write_en,
-	
-	input [1:0] memory_select,
-	input copy_enable, tc_enable,
-	input player_reset, stage_reset,
-	input draw_t, draw_p1, draw_p2,
-	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
-	input p2_bomb, p2_xdir, p2_xmov, p2_ydir, p2_ymov,
-	input clock, reset
-	); 
+
 endmodule
