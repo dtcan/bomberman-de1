@@ -3,12 +3,12 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 	input [1:0] memory_select;
 	input [3:0] tile_select;
 	output reg write_en, finished;
-	output reg [14:0] colour;
+	output reg [2:0] colour;
 	output reg [16:0] offset;
 	
 	localparam WIDTH = 320, HEIGHT = 240; // Still have to go change bit-widths when changing these!
 	
-	wire [14:0] colour_1, colour_2, colour_3, colour_t;
+	wire [2:0] colour_1, colour_2, colour_3, colour_t;
 	wire [8:0] offset_x;
 	wire [7:0] offset_y;
 	wire [7:0] offset_t;
@@ -55,7 +55,7 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 				.q_a (colour_1)	// data out
 				);
 	defparam
-		TitleScreen.WIDTH_A = 5*3,
+		TitleScreen.WIDTH_A = 1*3,
 		TitleScreen.INTENDED_DEVICE_FAMILY = "Cyclone II",
 		TitleScreen.OPERATION_MODE = "ROM",
 		TitleScreen.WIDTHAD_A = 17,
@@ -72,7 +72,7 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 				.q_a (colour_2)	// data out
 				);
 	defparam
-		GameScreen.WIDTH_A = 5*3,
+		GameScreen.WIDTH_A = 1*3,
 		GameScreen.INTENDED_DEVICE_FAMILY = "Cyclone II",
 		GameScreen.OPERATION_MODE = "ROM",
 		GameScreen.WIDTHAD_A = 17,
@@ -89,7 +89,7 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 				.q_a (colour_3)	// data out
 				);
 	defparam
-		EndScreen.WIDTH_A = 5*3,
+		EndScreen.WIDTH_A = 1*3,
 		EndScreen.INTENDED_DEVICE_FAMILY = "Cyclone II",
 		EndScreen.OPERATION_MODE = "ROM",
 		EndScreen.WIDTHAD_A = 17,
@@ -106,7 +106,7 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 				.q_a (colour_t)	// data out
 				);
 	defparam
-		TileSet.WIDTH_A = 5*3,
+		TileSet.WIDTH_A = 1*3,
 		TileSet.INTENDED_DEVICE_FAMILY = "Cyclone II",
 		TileSet.OPERATION_MODE = "ROM",
 		TileSet.WIDTHAD_A = 12,
