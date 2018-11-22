@@ -1,12 +1,17 @@
 module bomberman_datapath(
-	output [8:0] reg X, Y,
+	output reg [8:0] X_out, Y_out,
+	output finished, all_tiles_drawn, game_over,
 	
-	input player_reset;
+	input [1:0] memory_select,
+	input copy_enable, tc_enable,
+	input player_reset, stage_reset,
+	input draw_t, draw_p1, draw_p2,
 	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
 	input p2_bomb, p2_xdir, p2_xmov, p2_ydir, p2_ymov,
+	input clock, reset
 	); 
 	
-	reg [8:0] p1_X, p1_Y, p2_X, p2_Y;
+	reg [8:0] X, Y, p1_X, p1_Y, p2_X, p2_Y;
 	reg [4:0] p1_speed, p2_speed;
 	
 	assign p1_speed = 5'd2; // for now set 'speed' of sprite to be 8 pixels moved per second
@@ -64,6 +69,14 @@ module bomberman_datapath(
 		.reset(player_reset),
 		.enable(p2_ymov),
 		.direction(p2_ydir)
+		);
+		
+	tile_counter tc(
+		.tile_count(tile_count),
+		.all_tiles_counted(all_tiles_counted),
+		.clock(clock),
+		.reset(reset),
+		.enable(tc_enable)
 		);
 	
 	copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_en, finished);
