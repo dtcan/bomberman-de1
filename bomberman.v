@@ -26,11 +26,14 @@ module bomberman
 	output	[9:0]	VGA_G;	 				//	VGA Green[9:0]
 	output	[9:0]	VGA_B;   				//	VGA Blue[9:0]
 	
+	// wires for user input from keyboard.
+	wire p1_bomb, p2_bomb, p1_xdir, p2_xdir, p1_ydir, p2_ydir, p1_xmov, p2_xmov, p1_ymov, p2_ymov;
+	
 	wire resetn;
 	assign resetn = KEY[0];
 	
 	// Create the colour, x, y and writeEn wires that are inputs to the controller.
-	wire [2:0] colour;
+	wire [4:0] colour;
 	wire [7:0] x;
 	wire [6:0] y;
 	
@@ -53,7 +56,7 @@ module bomberman
 			.VGA_BLANK(VGA_BLANK_N),
 			.VGA_SYNC(VGA_SYNC_N),
 			.VGA_CLK(VGA_CLK));
-		defparam VGA.RESOLUTION = "640x480";
+		defparam VGA.RESOLUTION = "320x240";
 		defparam VGA.MONOCHROME = "FALSE";
 		defparam VGA.BITS_PER_COLOUR_CHANNEL = 5;
 		defparam VGA.BACKGROUND_IMAGE = "black.mif";
@@ -79,7 +82,13 @@ module bomberman
 	);
 
 	// Instansiate FSM control
+	
+	bomberman_control bc(
+	);
 
    // Instansiate datapath
+	
+	bomberman_datapath dp(
+	);
     
 endmodule

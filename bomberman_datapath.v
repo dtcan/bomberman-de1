@@ -1,43 +1,109 @@
-module bomberman_datapath();
+module bomberman_datapath(
+	output [8:0] reg X, Y,
+	
+	input player_reset;
+	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
+	input p2_bomb, p2_xdir, p2_xmov, p2_ydir, p2_ymov,
+	); 
+	
+	reg [8:0] p1_X, p1_Y, p2_X, p2_Y;
+	reg [4:0] p1_speed, p2_speed;
+	
+	assign p1_speed = 5'd2; // for now set 'speed' of sprite to be 8 pixels moved per second
+	assign p2_speed = 5'd2;
+	
+	// load game_stage map from .mem file into memory.
+	reg [3:0] game_stage_initial [0:120];
+	// for use in game.
+	reg [3:0] game_stage_current [0:120];
+	initial $readmemh("game_stage_1.mem", game_stage_initial);
+	
+	coordinate_counter player_1_X(
+		.next_coord(p1_X),
+		.start_coord(9'd72),
+		.min_coord(9'd72),
+		.max_coord(9'd232),
+		.increment(p1_speed),
+		.clock(clock),
+		.reset(player_reset),
+		.enable(p1_xmov),
+		.direction(p1_xdir)
+		);
+		
+	coordinate_counter player_1_Y(
+		.next_coord(p1_Y),
+		.start_coord(9'd96),
+		.min_coord(9'd32),
+		.max_coord(9'd192),
+		.increment(p1_speed),
+		.clock(clock),
+		.reset(player_reset),
+		.enable(p2_ymov),
+		.direction(p1_ydir)
+		);
+		
+	coordinate_counter player_2_X(
+		.next_coord(p2_X),
+		.start_coord(9'd232),
+		.min_coord(9'd72),
+		.max_coord(9'd232),
+		.increment(speed),
+		.clock(clock),
+		.reset(player_reset),
+		.enable(p2_xmov),
+		.direction(p2_xdir)
+		);
+		
+	coordinate_counter player_2_Y(
+		.next_coord(p2_Y),
+		.start_coord(9'd96),
+		.min_coord(9'd32),
+		.max_coord(9'd192),
+		.increment(speed),
+		.clock(clock),
+		.reset(player_reset),
+		.enable(p2_ymov),
+		.direction(p2_ydir)
+		);
+	
+	copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_en, finished);
 	
 	// input and direction registers and their respective logic.
-	always @ (posedge clock, negedge resetn)
+	always @ (posedge clock, posedge reset)
 		begin
-			if (!resetn)
+			if (resetn)
 				begin
-					X <= 8'd0;
-					Y <= 7'd60;
-					COLOUR <= 3'd0;
-					dir_X <= 0;
-					dir_Y <= 1;
+					X <= 9'd0;
+					Y <= 8'd0;
 				end
 			else
 				begin
-					if (ld_colour)
-						COLOUR <= colour_in;
-					if (draw_enable)
+					if (draw_t)
 						begin
-							X <= wire_x;
-							Y <= wire_y;
-							COLOUR <= colour_in;
+							X <= t_X;
+							Y <= t_Y;
 						end
-					if (erase_enable)
+					else if (draw_p1)
 						begin
-							X <= wire_x;
-							Y <= wire_y;
-							COLOUR <= 3'd0;
+							X <= p1_X;
+							Y <= p1_Y [8:0];
 						end
-					if (update)
+					else if (draw_p2)
 						begin
-							dir_X = (X == 8'd155) ? 0 : 1;
-							dir_Y = (Y == 7'd116) ? 0 : 1;
+							X <= p2_X;
+							Y <= p2_Y [8:0];
+						end
+					else
+						begin
+							X <= 9'd0;
+							Y <= 8'd0;
 						end
 				end
 		end
 		
 	always @ (*)
 		begin
-			if (!resetn)
+			if (reset)
 				begin
 					x_out <= 8'd0;
 					y_out <= 7'd60;
@@ -63,7 +129,7 @@ module coordinate_counter(
 
 	input reg [8:0] start_coord,
 	input reg [8:0] min_coord, max_coord,
-	input [5:0] increment,
+	input [4:0] increment,
 	input clock, reset, enable, direction
 	);
 	
@@ -74,74 +140,43 @@ module coordinate_counter(
 				begin
 					next_coord <= start_coord;
 				end
-			else if (enable & (next_coord >= min_coord) & (next_coord <= max_coord))
-				next_coord <= direction ? (next_coord + increment) : (next_coord - increment);
-//				if (direction)
-//					next_coord <= next_coord + increment;
-//				else
-//					next_coord <= next_coord - increment;
+			else if (enable)
+				if (direction)
+					if (next_coord <= max_coord - increment)
+						next_coord <= next_coord + increment;
+				else
+					if (next_coord >= min_coord + increment)
+						next_coord <= next_coord - increment;
 		end
 		
 endmodule
 
-coordinate_counter player_1_X(
-	.next_coord(p1_X),
-	.start_coord(9'd72),
-	.max_coord(9'd232),
-	.increment(p1_speed),
-	.clock(clock),
-	.reset(reset),
-	.enable(),
-	.direction(p1_X_dir)
-	);
+
+// counter module for cycling through game stage memory file.
+// active-high reset.
+module tile_counter(tile_count, all_tiles_counted, clock, reset, enable);
 	
-coordinate_counter player_1_Y(
-	.next_coord(p1_Y),
-	.start_coord(9'd96),
-	.max_coord(9'd232),
-	.increment(p1_speed),
-	.clock(clock),
-	.reset(reset),
-	.enable(),
-	.direction(p1_Y_dir)
-	);
+	output reg [6:0] tile_count;
+	output all_tiles_counted;
 	
-coordinate_counter player_2_X(
-	.next_coord(p2_X),
-	.start_coord(9'd232),
-	.increment(speed),
-	.clock(clock),
-	.reset(reset),
-	.enable(),
-	.direction(p2_X_dir)
-	);
+	input clock, reset, enable;
 	
-coordinate_counter player_2_Y(
-	.next_coord(p2_Y),
-	.start_coord(9'd96),
-	.increment(speed),
-	.clock(clock),
-	.reset(reset),
-	.enable(),
-	.direction(p2_Y_dir)
-	);
+	reg [6:0] count;
 	
-coordinate_counter tile_X(
-	.next_coord(t_X),
-	.start_coord(9'd72),
-	.increment(5'd16),
-	.clock(clock),
-	.reset(reset),
-	.enable(),
-	.direction(1)
-	);
+	always @(posedge clock, posedge resetn)
+		begin
+			if (reset)
+				begin
+					tile_count <= 0;
+				end
+			// count to 121 - 1
+			else if (enable)
+				if (tile_count == 7'd120)
+						tile_count <= 0;
+				else
+						tile_count <= count + 1;
+		end
 	
-coordinate_counter tile_Y(
-	.next_coord(t_Y),
-	.start_coord(9'd96),
-	.increment(5'd16),
-	.clock(clock),
-	.reset(reset),
-	.enable(),
-	.direction(1)
-	);
+	assign all_tiles_counted = (tile_count == 0) ? 1 : 0;
+		
+endmodule

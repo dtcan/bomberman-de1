@@ -2,38 +2,34 @@
 // module containing the control for bomberman.v
 
 module bomberman_control(
-	output [3:0] tile_select,
-	output [1:0] memory_select,
-	output copy_enable,
-	output reset_stage,
+	output reg [1:0] memory_select,
+	output reg copy_enable, tc_enable,
+	output reg player_reset, stage_reset,
+	output reg draw_t, draw_p1, draw_p2,
 	
-	input go, finished, game_over,
+	input go, finished, all_tiles_drawn, game_over,
 	input clock,
 	input reset
 	);
 	
-	// load game_stage map from .mem file into memory.
-	reg [3:0] game_stage_initial [0:120];
-	// for use in game.
-	reg [3:0] game_stage_current [0:120];
-	initial $readmemh("game_stage_1.mem", game_stage_initial);
+	reg dc_reset, dc_enable, refresh;
 	
 	delay_counter dc(
 		.out(clock_60Hz),
 		.clock(clock),
-		.resetn(!counter_reset),
-		.enable(counter_enable)
+		.reset(dc_reset),
+		.enable(dc_enable)
 		);
 	
-	// how often to redraw objects (for now moving sprites at 4 pixels/ second)
+	// how often to redraw objects (for now moving sprites 4 times/ second)
 	frame_counter fc(
-		.out(draw),
+		.out(refresh),
 		.clock(clock_60Hz),
-		.resetn(!counter_reset),
-		.enable(counter_enable)
+		.reset(dc_reset),
+		.enable(dc_enable)
 		);
 	
-	// declare states
+	// declare states``
 	localparam	LOAD_TITLE			= 4'd0,	// draw title screen background.
 					TITLE					= 4'd1,	// wait for user input to start game.
 					LOAD_STAGE 			= 4'd2,	// draw stage screen background.
@@ -60,7 +56,7 @@ module bomberman_control(
 				UPDATE_TILE:		next_state = all_tiles_drawn	? DRAW_SPRITE : DRAW_TILE;		 // loop back to DRAW_TILE until finished drawing all tiles.
 				DRAW_P1:				next_state = finished			? DRAW_P2 : DRAW_P1;				 // loop in DRAW_P1 until finished drawing Player 1's sprite.
 				DRAW_P2: 			next_state = finished 			? GAME_IDLE : DRAW_P2;			 // loop in DRAW_P2 until finished drawing Player 2's sprite.
-				GAME_IDLE:			next_state = next_cycle			? UPDATE_STAGE : GAME_IDLE;	 // loop in GAME_IDLE until delay is complete. 
+				GAME_IDLE:			next_state = refresh				? UPDATE_STAGE : GAME_IDLE;	 // loop in GAME_IDLE until delay is complete. 
 				UPDATE_STAGE:		next_state = game_over			? LOAD_WIN_SCREEN : DRAW_TILE; // loop back to DRAW_TILE until a Player is killed.
 				LOAD_WIN_SCREEN:	next_state = finished			? WIN_SCREEN : LOAD_WIN_SCREEN;// loop in LOAD_WIN_SCREEN until finished drawing win screen background.
 				WIN_SCREEN:			next_state = go					? LOAD_TITLE : WIN_SCREEN;		 // loop in WIN_SCREEN until user inputs to return to title.
@@ -72,12 +68,19 @@ module bomberman_control(
 	always @ (*)
 		begin: enable_signals
 			// default signals
-			tile_select = 4'd0;
 			memory_select = 2'd0;
 			copy_enable = 0;
 			tc_enable = 0;
+			player_reset = 0;
+			stage_reset = 0;
+			draw_t = 0;
 			draw_p1 = 0;
 			draw_p2 = 0;
+			
+			dc_reset = 0;
+			dc_enable = 0;
+			
+			game_over = 0;
 			
 			case (current_state)
 				LOAD_TITLE:
@@ -92,12 +95,13 @@ module bomberman_control(
 					begin
 						memory_select = 2'd1;
 						copy_enable = 1;
-						game_stage_current = game_stage_initial;
+						player_reset = 1;
 					end
 				DRAW_TILE:
 					begin
-						tile_select = game_stage_current[tile_count];
 						memory_select = 2'd3;
+						copy_enable = 1;
+						draw_t = 1;
 					end
 				UPDATE_TILE:
 					begin
@@ -105,18 +109,24 @@ module bomberman_control(
 					end
 				DRAW_P1:
 					begin
+						memory_select = 2'd3;
+						copy_enable = 1;
 						draw_p1 = 1;
 					end
 				DRAW_P2:
 					begin
+						memory_select = 2'd3;
+						copy_enable = 1;
 						draw_p2 = 1;
 					end
 				GAME_IDLE:
 					begin
+						dc_reset = 1;
+						dc_enable = 1;
 					end
 				UPDATE_STAGE:
 					begin
-						update_stage = 1;
+						game_over = 1;
 					end
 				LOAD_WIN_SCREEN:
 					begin
@@ -194,33 +204,4 @@ module frame_counter(out, clock, reset, enable);
 	// sends high out signal 1 time every 15 frames.
 	assign out = (count == 0)? 1 : 0;
 
-endmodule
-
-// counter module for cycling through game stage memory file.
-// active-high reset.
-module tile_counter(tile_count, clock, reset, enable);
-	
-	output reg [6:0] tile_count;
-	output all_tiles_counted;
-	
-	input clock, reset, enable;
-	
-	reg [6:0] count;
-	
-	always @(posedge clock, posedge resetn)
-		begin
-			if (reset)
-				begin
-					tile_count <= 0;
-				end
-			// count to 121 - 1
-			else if (enable)
-				if (tile_count == 7'd120)
-						tile_count <= 0;
-				else
-						tile_count <= count + 1;
-		end
-	
-	assign all_tiles_counted = (tile_count == 0) ? 1 : 0;
-		
 endmodule

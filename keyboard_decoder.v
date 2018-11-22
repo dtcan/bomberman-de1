@@ -34,7 +34,7 @@ module keyboard_decoder(
 		  .enter(enter)
 		  );
 	
-	// input logic.
+	// output logic.
 	always @(*)
 		begin
 			// for player 1.
