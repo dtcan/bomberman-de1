@@ -134,7 +134,7 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 			S_READ: Qn = S_DRAW;
 			S_DRAW: Qn = S_INCREMENT;
 			S_INCREMENT: Qn = S_INCREMENT_HOLD;
-			S_INCREMENT_HOLD: Qn = |offset ? S_READ : S_FINISH;
+			S_INCREMENT_HOLD: Qn = |offset ? S_SELECT : S_FINISH;
 			S_FINISH: Qn = S_RESET;
 		endcase
 	end
