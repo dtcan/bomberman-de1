@@ -1,110 +1,122 @@
-module bomberman_datapath();
-
+module bomberman_datapath(
+	output reg [8:0] X_out, Y_out,
+	output finished, all_tiles_drawn, game_over,
+	
+	input [1:0] memory_select,
+	input copy_enable, tc_enable,
+	input player_reset, stage_reset,
+	input draw_t, draw_p1, draw_p2,
+	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
+	input p2_bomb, p2_xdir, p2_xmov, p2_ydir, p2_ymov,
+	input clock, reset
+	); 
+	
+	reg [8:0] X, Y, p1_X, p1_Y, p2_X, p2_Y;
+	reg [4:0] p1_speed, p2_speed;
+	
+	assign p1_speed = 5'd2; // for now set 'speed' of sprite to be 8 pixels moved per second
+	assign p2_speed = 5'd2;
+	
 	// load game_stage map from .mem file into memory.
-	reg [3:0] game_stage [0:120];
-	inital $readmemh("game_stage_1.mem", game_stage);
+	reg [3:0] game_stage_initial [0:120];
+	// for use in game.
+	reg [3:0] game_stage_current [0:120];
+	initial $readmemh("game_stage_1.mem", game_stage_initial);
 	
-module datapath(
-	x_out, y_out,
-	colour_out,
-	draw_complete,
-	clock,
-	resetn,
-	colour_in,
-	ld_colour,
-	draw_enable,
-	erase_enable
-	);
-	
-	output [7:0] x_out;
-	output [6:0] y_out;
-	output [2:0] colour_out;
-	output draw_complete;
-	
-	input [2:0] colour_in;
-	input clock, resetn, ld_colour, draw_enable, erase_enable;
-
-	// input registers
-	reg [7:0] X;
-	reg [6:0] Y;
-	reg [2:0] COLOUR;
-	
-	// direction registers
-	reg dir_X, dir_Y; // for Y: 0 - Up, 1 - Down. for X: 0 - Left, 1 - Right.
-	
-	// output registers
-	reg [7:0] x_out;
-	reg [6:0] y_out;
-	reg [2:0] colour_out;
-	
-	// counter output wire
-	wire [7:0] wire_x;
-	wire [6:0] wire_y;
-	wire [3:0] count_out;
-	
-	counter_X cX(
-		.x_out(wire_x),
+	coordinate_counter player_1_X(
+		.next_coord(p1_X),
+		.start_coord(9'd72),
+		.min_coord(9'd72),
+		.max_coord(9'd232),
+		.increment(p1_speed),
 		.clock(clock),
-		.resetn(resetn),
-		.enable(update),
-		.dir(dir_X)
+		.reset(player_reset),
+		.enable(p1_xmov),
+		.direction(p1_xdir)
 		);
 		
-	counter_Y cY(
-		.y_out(wire_y),
+	coordinate_counter player_1_Y(
+		.next_coord(p1_Y),
+		.start_coord(9'd96),
+		.min_coord(9'd32),
+		.max_coord(9'd192),
+		.increment(p1_speed),
 		.clock(clock),
-		.resetn(resetn),
-		.enable(update),
-		.dir(dir_Y)
+		.reset(player_reset),
+		.enable(p2_ymov),
+		.direction(p1_ydir)
 		);
 		
-	// instantiate counter
-	counter c(
-		.out(count_out),
-		.finished(draw_complete),
+	coordinate_counter player_2_X(
+		.next_coord(p2_X),
+		.start_coord(9'd232),
+		.min_coord(9'd72),
+		.max_coord(9'd232),
+		.increment(speed),
 		.clock(clock),
-		.resetn(resetn),
-		.enable((draw_enable | erase_enable))
+		.reset(player_reset),
+		.enable(p2_xmov),
+		.direction(p2_xdir)
 		);
+		
+	coordinate_counter player_2_Y(
+		.next_coord(p2_Y),
+		.start_coord(9'd96),
+		.min_coord(9'd32),
+		.max_coord(9'd192),
+		.increment(speed),
+		.clock(clock),
+		.reset(player_reset),
+		.enable(p2_ymov),
+		.direction(p2_ydir)
+		);
+		
+	tile_counter tc(
+		.tile_count(tile_count),
+		.all_tiles_counted(all_tiles_counted),
+		.clock(clock),
+		.reset(reset),
+		.enable(tc_enable)
+		);
+	
+	copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_en, finished);
 	
 	// input and direction registers and their respective logic.
-	always @ (posedge clock, negedge resetn)
+	always @ (posedge clock, posedge reset)
 		begin
-			if (!resetn)
+			if (resetn)
 				begin
-					X <= 8'd0;
-					Y <= 7'd60;
-					COLOUR <= 3'd0;
-					dir_X <= 0;
-					dir_Y <= 1;
+					X <= 9'd0;
+					Y <= 8'd0;
 				end
 			else
 				begin
-					if (ld_colour)
-						COLOUR <= colour_in;
-					if (draw_enable)
+					if (draw_t)
 						begin
-							X <= wire_x;
-							Y <= wire_y;
-							COLOUR <= colour_in;
+							X <= t_X;
+							Y <= t_Y;
 						end
-					if (erase_enable)
+					else if (draw_p1)
 						begin
-							X <= wire_x;
-							Y <= wire_y;
-							COLOUR <= 3'd0;
+							X <= p1_X;
+							Y <= p1_Y [8:0];
 						end
-					if (update)
+					else if (draw_p2)
 						begin
-							dir_X = (X == 8'd155) ? 0 : 1;
-							dir_Y = (Y == 7'd116) ? 0 : 1;
+							X <= p2_X;
+							Y <= p2_Y [8:0];
+						end
+					else
+						begin
+							X <= 9'd0;
+							Y <= 8'd0;
 						end
 				end
 		end
 		
 	always @ (*)
 		begin
-			if (!resetn)
+			if (reset)
 				begin
 					x_out <= 8'd0;
 					y_out <= 7'd60;
@@ -122,84 +134,62 @@ module datapath(
 		
 endmodule
 
-// counter module for X coordinate.
-module counter_X(x_out, clock, resetn, enable, dir);
+// counter module for X/Y coordinate given start_coord, min_coord, max_coord, direction and increment.
+// 0: decrease coord by increment. 1: increase coord by increment.
+// active high reset.
+module coordinate_counter(
+	output reg [8:0] next_coord,
+
+	input reg [8:0] start_coord,
+	input reg [8:0] min_coord, max_coord,
+	input [4:0] increment,
+	input clock, reset, enable, direction
+	);
 	
-	output [7:0] x_out;
-	
-	input clock, resetn, enable; 
-	input dir; // horizontal direction, 0 for left and 1 for right.
-	
-	reg [7:0] x_out;
-	
-	always @ (posedge clock, negedge resetn)
+	always @ (posedge clock, posedge reset)
 		begin
-			// reset to position 0.
-			if (!resetn)
+			// reset to start_coord.
+			if (reset)
 				begin
-					x_out <= 0;
+					next_coord <= start_coord;
 				end
 			else if (enable)
-				if (dir)
-					x_out <= x_out + 1;
+				if (direction)
+					if (next_coord <= max_coord - increment)
+						next_coord <= next_coord + increment;
 				else
-					x_out <= x_out - 1;
+					if (next_coord >= min_coord + increment)
+						next_coord <= next_coord - increment;
 		end
 		
 endmodule
 
-// counter module for y coordinate.
-module counter_Y(y_out, clock, resetn, enable, dir);
-	
-	output [6:0] y_out;
-	
-	input clock, resetn, enable; 
-	input dir; // vertical direction, 0 for up and 1 for down.
-	
-	reg [6:0] y_out;
-	
-	always @ (posedge clock, negedge resetn)
-		begin
-			// reset to position 60.
-			if (!resetn)
-				begin
-					y_out <= 7'd60;
-				end
-			else if (enable)
-				if (!dir)
-					y_out <= y_out + 1;
-				else
-					y_out <= y_out - 1;
-		end
-		
-endmodule		
 
-// counter module for datapath.
-module counter(out, finished, clock, resetn, enable);
+// counter module for cycling through game stage memory file.
+// active-high reset.
+module tile_counter(tile_count, all_tiles_counted, clock, reset, enable);
 	
-	output [3:0] out;
-	output finished;
+	output reg [6:0] tile_count;
+	output all_tiles_counted;
 	
-	input clock, resetn, enable;
+	input clock, reset, enable;
 	
-	reg [3:0] out;
+	reg [6:0] count;
 	
-	always @ (posedge clock, negedge resetn)
+	always @(posedge clock, posedge resetn)
 		begin
-			if (!resetn)
+			if (reset)
 				begin
-					out <= 0;
+					tile_count <= 0;
 				end
-			// count to 16 if enable.
+			// count to 121 - 1
 			else if (enable)
-				if (out == 4'd15)
-					begin
-						out <= 0;
-					end
+				if (tile_count == 7'd120)
+						tile_count <= 0;
 				else
-					out <= out + 1;
+						tile_count <= count + 1;
 		end
-		
-		assign finished = (out == 4'd15) ? 1 : 0;
 	
+	assign all_tiles_counted = (tile_count == 0) ? 1 : 0;
+		
 endmodule
