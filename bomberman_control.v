@@ -12,10 +12,13 @@ module bomberman_control(
 	input reset
 	);
 	
-	reg dc_reset, dc_enable, refresh;
+	reg [3:0] current_state, next_state;
+	reg dc_reset, dc_enable;
+	
+	wire clock_60Hz, refresh;
 	
 	delay_counter dc(
-		.out(clock_60Hz),
+		.clock_60Hz(clock_60Hz),
 		.clock(clock),
 		.reset(dc_reset),
 		.enable(dc_enable)
@@ -53,7 +56,7 @@ module bomberman_control(
 				TITLE:				next_state = go					? LOAD_STAGE : TITLE;			 // loop in TITLE until user inputs to start game.
 				LOAD_STAGE:			next_state = finished			? DRAW_TILE : LOAD_STAGE;		 // loop in LOAD_STAGE until finished drawing stage background.
 				DRAW_TILE:			next_state = finished 			? UPDATE_TILE : DRAW_TILE;		 // loop in DRAW_TILE until finished drawing stage tile.
-				UPDATE_TILE:		next_state = all_tiles_drawn	? DRAW_SPRITE : DRAW_TILE;		 // loop back to DRAW_TILE until finished drawing all tiles.
+				UPDATE_TILE:		next_state = all_tiles_drawn	? DRAW_P1 : DRAW_TILE;		 	 // loop back to DRAW_TILE until finished drawing all tiles.
 				DRAW_P1:				next_state = finished			? DRAW_P2 : DRAW_P1;				 // loop in DRAW_P1 until finished drawing Player 1's sprite.
 				DRAW_P2: 			next_state = finished 			? GAME_IDLE : DRAW_P2;			 // loop in DRAW_P2 until finished drawing Player 2's sprite.
 				GAME_IDLE:			next_state = refresh				? UPDATE_STAGE : GAME_IDLE;	 // loop in GAME_IDLE until delay is complete. 
@@ -142,8 +145,8 @@ module bomberman_control(
 	 // current_state registers
     always@(posedge clock)
     begin: state_FFs
-        if(!resetn)
-            current_state <= S_IDLE;
+        if(reset)
+            current_state <= LOAD_TITLE;
         else
             current_state <= next_state;
     end
@@ -187,7 +190,7 @@ module frame_counter(out, clock, reset, enable);
 	
 	reg [3:0] count;
 	
-	always @(posedge clock, posedge resetn)
+	always @(posedge clock, posedge reset)
 		begin
 			if (reset)
 				begin

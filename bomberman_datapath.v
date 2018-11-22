@@ -1,5 +1,7 @@
 module bomberman_datapath(
-	output reg [8:0] X_out, Y_out,
+	output reg [8:0] X_out, 
+	output reg [7:0] Y_out,
+	output [2:0] colour,
 	output finished, all_tiles_drawn, game_over,
 	output write_en,
 	
@@ -12,8 +14,10 @@ module bomberman_datapath(
 	input clock, reset
 	); 
 	
-	reg [8:0] X, Y, p1_X, p1_Y, p2_X, p2_Y;
-	reg [4:0] p1_speed, p2_speed;
+	reg [8:0] X, Y;
+	wire [16:0] offset;
+	wire [8:0] p1_X, p1_Y, p2_X, p2_Y;
+	wire [4:0] p1_speed, p2_speed;
 	
 	assign p1_speed = 5'd2; // for now set 'speed' of sprite to be 8 pixels moved per second
 	assign p2_speed = 5'd2;
@@ -24,6 +28,7 @@ module bomberman_datapath(
 //	reg [3:0] game_stage_current [0:120];
 	initial $readmemh("game_stage_1.mem", game_stage_initial);
 	
+	wire [6:0] tile_count;
 	wire all_tiles_counted;
 	
 	coordinate_counter player_1_X(
@@ -55,7 +60,7 @@ module bomberman_datapath(
 		.start_coord(9'd232),
 		.min_coord(9'd72),
 		.max_coord(9'd232),
-		.increment(speed),
+		.increment(p2_speed),
 		.clock(clock),
 		.reset(player_reset),
 		.enable(p2_xmov),
@@ -67,7 +72,7 @@ module bomberman_datapath(
 		.start_coord(9'd96),
 		.min_coord(9'd32),
 		.max_coord(9'd192),
-		.increment(speed),
+		.increment(p2_speed),
 		.clock(clock),
 		.reset(player_reset),
 		.enable(p2_ymov),
@@ -82,7 +87,7 @@ module bomberman_datapath(
 		.enable(tc_enable)
 		);
 	
-	copy(
+	copy c0(
 		.clk(clock),
 		.reset_n(reset),
 		.go(copy_enable),
@@ -106,8 +111,8 @@ module bomberman_datapath(
 				begin
 					if (draw_t)
 						begin
-							X <= t_X;
-							Y <= t_Y;
+							X <= X + {tile_count[3:0], 4'b0000};
+							Y <= Y + {tile_count[6:4], 4'b0000};
 						end
 					else if (draw_p1)
 						begin
@@ -133,7 +138,6 @@ module bomberman_datapath(
 				begin
 					X_out <= 9'd0;
 					Y_out <= 8'd60;
-					colour_out <= 3'd0;
 				end
 			else if (draw_t | draw_p1 | draw_p2) 
 				// add last 2 least significant bits of counter output to X coordinate.
@@ -141,7 +145,6 @@ module bomberman_datapath(
 				begin
 					X_out <= X + offset[8:0];
 					Y_out <= Y + offset[16:9];
-					colour_out <= COLOUR;
 				end
 		end
 endmodule
@@ -152,8 +155,8 @@ endmodule
 module coordinate_counter(
 	output reg [8:0] next_coord,
 
-	input reg [8:0] start_coord,
-	input reg [8:0] min_coord, max_coord,
+	input [8:0] start_coord,
+	input [8:0] min_coord, max_coord,
 	input [4:0] increment,
 	input clock, reset, enable, direction
 	);
@@ -186,9 +189,7 @@ module tile_counter(tile_count, all_tiles_counted, clock, reset, enable);
 	
 	input clock, reset, enable;
 	
-	reg [6:0] count;
-	
-	always @(posedge clock, posedge resetn)
+	always @(posedge clock, posedge reset)
 		begin
 			if (reset)
 				begin
@@ -199,9 +200,9 @@ module tile_counter(tile_count, all_tiles_counted, clock, reset, enable);
 				if (tile_count == 7'd120)
 						tile_count <= 0;
 				else
-						tile_count <= count + 1;
+						tile_count <= tile_count + 1;
 		end
 	
-	assign all_tiles_counted = (tile_count == 0) ? 1 : 0;
+	assign all_tiles_counted = (tile_count == 0) ? 1'd1 : 1'd0;
 		
 endmodule
