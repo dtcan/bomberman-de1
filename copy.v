@@ -149,17 +149,21 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 			begin
 				adr = 0;
 			end
-			S_SELECT:
-			begin
-				if(memory_select == 2'b11)
-					adr = ({tile_select[3:2],offset[7:4]} * WIDTH) + {tile_select[1:0], offset[3:0]};
-				else
-					adr = (offset_y * WIDTH) + offset_x;
-			end
 			S_DRAW: write_en = 1;
 			S_INCREMENT: enable_count = 1;
 			S_FINISH: finished = 1;
 		endcase
+	end
+	
+	always @(posedge clk)
+	begin
+		if(Q == S_SELECT)
+		begin
+			if(memory_select == 2'b11)
+				adr = ({tile_select[3:2],offset[7:4]} * WIDTH) + {tile_select[1:0], offset[3:0]};
+			else
+				adr = (offset_y * WIDTH) + offset_x;
+		end
 	end
 	
 	always @(posedge clk)
