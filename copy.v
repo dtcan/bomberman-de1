@@ -42,7 +42,7 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 		endcase
 		
 		if(memory_select == 2'b11)
-			offset = {9'd0, offset_t};
+			offset = {4'd0, offset_t[7:4], 5'd0, offset_t[3:0]};
 		else
 			offset = {offset_y, offset_x};
 	end
@@ -113,7 +113,7 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 		TileSet.NUMWORDS_A = 16 * 16 * 16,
 		TileSet.CLOCK_ENABLE_INPUT_A = "BYPASS",
 		TileSet.POWER_UP_UNINITIALIZED = "FALSE",
-		TileSet.INIT_FILE = "tileset.mif";
+		TileSet.INIT_FILE = "tilesheet.mif";
 
 	reg [3:0] Q, Qn;
 	localparam S_RESET          = 3'b000,
@@ -145,10 +145,6 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 		write_en = 0;
 		finished = 0;
 		case(Q)
-			S_RESET:
-			begin
-				adr = 0;
-			end
 			S_DRAW: write_en = 1;
 			S_INCREMENT: enable_count = 1;
 			S_FINISH: finished = 1;
@@ -157,12 +153,14 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 	
 	always @(posedge clk)
 	begin
-		if(Q == S_SELECT)
+		if(Q == S_RESET)
+			adr <= 0;
+		else if(Q == S_SELECT)
 		begin
 			if(memory_select == 2'b11)
-				adr = ({tile_select[3:2],offset[7:4]} * WIDTH) + {tile_select[1:0], offset[3:0]};
+				adr <= ({tile_select[3:2], offset[7:4]} * WIDTH) + {tile_select[1:0], offset[3:0]};
 			else
-				adr = (offset_y * WIDTH) + offset_x;
+				adr <= (offset_y * WIDTH) + offset_x;
 		end
 	end
 	
