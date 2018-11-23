@@ -169,7 +169,7 @@ module delay_counter(clock_60Hz, clock, reset, enable);
 				count <= 0;
 			// count to 833 333 - 1
 			else if (enable)
-				if (count == 19'd833332) 
+				if (count == 20'd833332) 
 					count <= 0;
 				else
 					count <= count + 1;

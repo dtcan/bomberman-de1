@@ -2,7 +2,7 @@ module bomberman_datapath(
 	output reg [8:0] X_out, 
 	output reg [7:0] Y_out,
 	output [2:0] colour,
-	output finished, all_tiles_drawn, game_over,
+	output finished, all_tiles_drawn, //game_over,
 	output write_en,
 	
 	input [1:0] memory_select,
@@ -29,8 +29,8 @@ module bomberman_datapath(
 	initial $readmemh("game_stage_1.mem", game_stage_initial);
 	
 	wire [3:0] tile_count_x, tile_count_y;
-	wire all_tiles_counted, all_tiles_counted_x, all_tiles_counted_y;
-	assign all_tiles_counted = (all_tiles_counted_x & all_tiles_counted_y);
+	wire all_tiles_counted_x, all_tiles_counted_y;
+	assign all_tiles_drawn = (all_tiles_counted_x & all_tiles_counted_y);
 	
 	coordinate_counter player_1_X(
 		.next_coord(p1_X),
@@ -90,7 +90,7 @@ module bomberman_datapath(
 	
 	tile_counter tc_y(
 		.tile_count(tile_count_y),
-		.all_tiles_counter(all_tiles_counted_y),
+		.all_tiles_counted(all_tiles_counted_y),
 		.clock(clock),
 		.reset(reset),
 		.enable(all_tiles_counted_x)
@@ -101,7 +101,7 @@ module bomberman_datapath(
 		.reset_n(reset),
 		.go(copy_enable),
 		.memory_select(memory_select),
-		.tile_select((game_stage_initial [tile_count])),
+		.tile_select((game_stage_initial [((tile_count_y * 11) + tile_count_x]))),
 		.colour(colour),
 		.offset(offset),
 		.write_en(write_en),
@@ -120,7 +120,7 @@ module bomberman_datapath(
 				begin
 					if (draw_t)
 						begin
-							X <= 9'd72 + {1b'0, tile_count_x, 4'b0000};
+							X <= 9'd72 + {1'b0, tile_count_x, 4'b0000};
 							Y <= 8'd32 + {tile_count_y, 4'b0000};
 						end
 					else if (draw_p1)
@@ -178,12 +178,18 @@ module coordinate_counter(
 					next_coord <= start_coord;
 				end
 			else if (enable)
-				if (direction)
-					if (next_coord <= max_coord - increment)
-						next_coord <= next_coord + increment;
-				else
-					if (next_coord >= min_coord + increment)
-						next_coord <= next_coord - increment;
+				begin
+					if (direction)
+						begin
+							if (next_coord <= max_coord - increment)
+								next_coord <= next_coord + increment;
+						end
+					else
+						begin
+							if (next_coord >= min_coord + increment)
+								next_coord <= next_coord - increment;
+						end
+				end
 		end
 		
 endmodule

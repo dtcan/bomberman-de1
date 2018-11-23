@@ -16,9 +16,9 @@ module bomberman
 	);
 
 	input	CLOCK_50;				//	50 MHz
-	input [0:0] KEY;
+	input [1:0] KEY;
 	input PS2_CLK;
-	input ps2_DAT;
+	input PS2_DAT;
 	
 	// Do not change the following outputs
 	output			VGA_CLK;   				//	VGA Clock
@@ -51,7 +51,7 @@ module bomberman
 	// Define the number of colours as well as the initial background
 	// image file (.MIF) for the controller.
 	vga_adapter VGA(
-			.resetn(reset),
+			.resetn(~reset),
 			.clock(CLOCK_50),
 			.colour(colour),
 			.x(x),
@@ -68,7 +68,7 @@ module bomberman
 			.VGA_CLK(VGA_CLK));
 		defparam VGA.RESOLUTION = "320x240";
 		defparam VGA.MONOCHROME = "FALSE";
-		defparam VGA.BITS_PER_COLOUR_CHANNEL = 5;
+		defparam VGA.BITS_PER_COLOUR_CHANNEL = 1;
 		defparam VGA.BACKGROUND_IMAGE = "black.mif";
 					
 	// Put your code here. Your code should produce signals x,y,colour and writeEn/plot
@@ -105,7 +105,7 @@ module bomberman
 		.go(p1_bomb),
 		.finished(finished),
 		.all_tiles_drawn(all_tiles_drawn),
-		.game_over(game_over),
+		.game_over(~KEY[1]),
 		.clock(CLOCK_50),
 		.reset(reset)
 	);
@@ -118,7 +118,7 @@ module bomberman
 		.colour(colour),
 		.finished(finished),
 		.all_tiles_drawn(all_tiles_drawn),
-		.game_over(game_over),
+//		.game_over(game_over),
 		.write_en(write_en),
 		.memory_select(memory_select),
 		.copy_enable(copy_enable),
