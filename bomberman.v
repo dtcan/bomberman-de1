@@ -4,6 +4,8 @@ module bomberman
 		KEY,
 		PS2_CLK,
 		PS2_DAT,
+		// For debugging:
+		LEDR,
 		// The ports below are for the VGA output.
 		VGA_CLK,   						//	VGA Clock
 		VGA_HS,							//	VGA H_SYNC
@@ -17,8 +19,24 @@ module bomberman
 
 	input	CLOCK_50;				//	50 MHz
 	input [1:0] KEY;
-	input PS2_CLK;
-	input PS2_DAT;
+	
+	inout PS2_CLK;
+	inout PS2_DAT;
+	
+	// For debugging: (p1 inputs LEDR[0-4]. p2 inputs LEDR[5-9])
+	output [9:0] LEDR;
+	assign p1_bomb = LEDR[0];
+	assign p1_xdir = LEDR[1];
+	assign p1_xmov = LEDR[2];
+	assign p1_ydir = LEDR[3];
+	assign p1_ymov = LEDR[4];
+	assign p2_bomb = LEDR[5];
+	assign p2_xdir = LEDR[6];
+	assign p2_xmov = LEDR[7];
+	assign p2_ydir = LEDR[8];
+	assign p2_ymov = LEDR[9];
+	// Temporary for debugging:
+	assign game_over = ~KEY[1];
 	
 	// Do not change the following outputs
 	output			VGA_CLK;   				//	VGA Clock
@@ -51,7 +69,7 @@ module bomberman
 	// Define the number of colours as well as the initial background
 	// image file (.MIF) for the controller.
 	vga_adapter VGA(
-			.resetn(~reset),
+			.resetn(~reset), // since our code runs on reset active high wile VGA is active low.
 			.clock(CLOCK_50),
 			.colour(colour),
 			.x(x),
@@ -105,7 +123,7 @@ module bomberman
 		.go(p1_bomb),
 		.finished(finished),
 		.all_tiles_drawn(all_tiles_drawn),
-		.game_over(~KEY[1]),
+		.game_over(game_over),
 		.clock(CLOCK_50),
 		.reset(reset)
 	);
