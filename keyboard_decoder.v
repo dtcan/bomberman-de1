@@ -39,16 +39,16 @@ module keyboard_decoder(
 		begin
 			// for player 1.
 			p1_bomb <= space;
-			p1_xdir <= d ? d : a;
+			p1_xdir <= d ? d : ~a;
 			p1_xmov <= (a | d);
-			p1_ydir <= s ? s : w; 
+			p1_ydir <= s ? s : ~w; 
 			p1_ymov <=	(w | s);
 			
 			// for player 2.
 			p2_bomb <= enter;
-			p2_xdir <= right ? right : left;
+			p2_xdir <= right ? right : ~left;
 			p2_xmov <= (left | right);
-			p2_ydir <= down ? down : up;
+			p2_ydir <= down ? down : ~up;
 			p2_ymov <= (up | down);
 		end
 
