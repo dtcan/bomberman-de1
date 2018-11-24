@@ -5,7 +5,7 @@ module bomberman_control(
 	output reg [1:0] memory_select,
 	output reg copy_enable, tc_enable,
 	output reg player_reset, stage_reset,
-	output reg draw_t, draw_p1, draw_p2,
+	output reg draw_stage, draw_t, draw_p1, draw_p2,
 	
 	input go, finished, all_tiles_drawn, game_over,
 	input clock,
@@ -76,6 +76,8 @@ module bomberman_control(
 			tc_enable = 0;
 			player_reset = 0;
 			stage_reset = 0;
+			
+			draw_stage = 0;
 			draw_t = 0;
 			draw_p1 = 0;
 			draw_p2 = 0;
@@ -83,13 +85,12 @@ module bomberman_control(
 			dc_reset = 0;
 			dc_enable = 0;
 			
-			game_over = 0;
-			
 			case (current_state)
 				LOAD_TITLE:
 					begin
 						memory_select = 2'd0;
 						copy_enable = 1;
+						draw_stage = 1;
 					end
 				TITLE:
 					begin
@@ -98,7 +99,9 @@ module bomberman_control(
 					begin
 						memory_select = 2'd1;
 						copy_enable = 1;
+						draw_stage = 1;
 						player_reset = 1;
+						dc_reset = 1;
 					end
 				DRAW_TILE:
 					begin
@@ -124,17 +127,16 @@ module bomberman_control(
 					end
 				GAME_IDLE:
 					begin
-						dc_reset = 1;
 						dc_enable = 1;
 					end
 				UPDATE_STAGE:
 					begin
-						game_over = 1;
 					end
 				LOAD_WIN_SCREEN:
 					begin
 						memory_select = 2'd2;
 						copy_enable = 1;
+						draw_stage = 1;
 					end
 				WIN_SCREEN:
 					begin
