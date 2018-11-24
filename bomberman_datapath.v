@@ -8,7 +8,7 @@ module bomberman_datapath(
 	input [1:0] memory_select,
 	input copy_enable, tc_enable,
 	input player_reset, stage_reset,
-	input draw_t, draw_p1, draw_p2,
+	input draw_stage, draw_t, draw_p1, draw_p2,
 	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
 	input p2_bomb, p2_xdir, p2_xmov, p2_ydir, p2_ymov,
 	input clock, reset
@@ -32,6 +32,7 @@ module bomberman_datapath(
 	wire all_tiles_counted_x, all_tiles_counted_y;
 	assign all_tiles_drawn = (all_tiles_counted_x & all_tiles_counted_y);
 	
+	// need to slow this down possibly send signal from control module during respective states.
 	coordinate_counter player_1_X(
 		.next_coord(p1_X),
 		.start_coord(9'd72),
@@ -118,25 +119,25 @@ module bomberman_datapath(
 				end
 			else
 				begin
+					if (draw_stage)
+						begin
+							X <= 9'd0;
+							Y <= 8'd0;
+						end
 					if (draw_t)
 						begin
 							X <= 9'd72 + {1'b0, tile_count_x, 4'b0000};
 							Y <= 8'd32 + {tile_count_y, 4'b0000};
 						end
-					else if (draw_p1)
+					if (draw_p1)
 						begin
 							X <= p1_X;
 							Y <= p1_Y [7:0];
 						end
-					else if (draw_p2)
+					if (draw_p2)
 						begin
 							X <= p2_X;
 							Y <= p2_Y [7:0];
-						end
-					else
-						begin
-							X <= 9'd0;
-							Y <= 8'd0;
 						end
 				end
 		end
@@ -148,9 +149,7 @@ module bomberman_datapath(
 					X_out <= 9'd0;
 					Y_out <= 8'd60;
 				end
-			else if (draw_t | draw_p1 | draw_p2) 
-				// add last 2 least significant bits of counter output to X coordinate.
-				// add first 2 most significant bits of counter output to Y coordinate.
+			else if (draw_stage | draw_t | draw_p1 | draw_p2) 
 				begin
 					X_out <= X + offset[8:0];
 					Y_out <= Y + offset[16:9];
