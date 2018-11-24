@@ -53,7 +53,7 @@ module bomberman
 	
 	// wires for control/datapath inputs/ outputs.
 	wire [1:0] memory_select;
-	wire copy_enable, tc_enable, player_reset, stage_reset, draw_t, draw_p1, draw_p2;
+	wire copy_enable, tc_enable, player_reset, stage_reset, draw_stage, draw_t, draw_p1, draw_p2;
 	wire finished, all_tiles_drawn, game_over;
 	
 	// wires for datapath/VGA inputs/ outputs.
@@ -117,6 +117,7 @@ module bomberman
 		.tc_enable(tc_enable),
 		.player_reset(player_reset),
 		.stage_reset(stage_reset),
+		.draw_stage(draw_stage),
 		.draw_t(draw_t),
 		.draw_p1(draw_p1),
 		.draw_p2(draw_p2),
@@ -143,6 +144,7 @@ module bomberman
 		.tc_enable(tc_enable),
 		.player_reset(player_reset),
 		.stage_reset(stage_reset),
+		.draw_stage(draw_stage),
 		.draw_t(draw_t),
 		.draw_p1(draw_p1),
 		.draw_p2(draw_p2),
