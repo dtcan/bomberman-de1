@@ -6,6 +6,7 @@ module bomberman_control(
 	output reg copy_enable, tc_enable,
 	output reg player_reset, stage_reset,
 	output reg draw_stage, draw_t, draw_p1, draw_p2,
+	output refresh,
 	
 	input go, finished, all_tiles_drawn, game_over,
 	input clock,
@@ -15,7 +16,7 @@ module bomberman_control(
 	reg [3:0] current_state, next_state;
 	reg dc_reset, dc_enable;
 	
-	wire clock_60Hz, refresh;
+	wire clock_60Hz;// refresh;
 	
 	delay_counter dc(
 		.clock_60Hz(clock_60Hz),
@@ -168,17 +169,17 @@ module delay_counter(clock_60Hz, clock, reset, enable);
 	always @(posedge clock, posedge reset)
 		begin
 			if (reset)
-				count <= 0;
+				count <= 20'd0;
 			// count to 833 333 - 1
 			else if (enable)
 				if (count == 20'd833332) 
-					count <= 0;
+					count <= 20'd0;
 				else
-					count <= count + 1;
+					count <= count + 20'd1;
 		end
 		
 	// sends high out signal ~60 times per second. 
-	assign clock_60Hz = (count == 0)? 1 : 0;
+	assign clock_60Hz = (count == 20'd0)? 1 : 0;
 
 endmodule
 
@@ -196,17 +197,17 @@ module frame_counter(out, clock, reset, enable);
 		begin
 			if (reset)
 				begin
-					count <= 0;
+					count <= 4'd0;
 				end
 			// count to 15 - 1
 			else if (enable)
 				if (count == 4'd14)
-						count <= 0;
+						count <= 4'd0;
 				else
-						count <= count + 1;
+						count <= count + 4'd1;
 		end
 	
 	// sends high out signal 1 time every 15 frames.
-	assign out = (count == 0)? 1 : 0;
+	assign out = (count == 4'd0)? 1 : 0;
 
 endmodule
