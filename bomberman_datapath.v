@@ -1,6 +1,6 @@
 module bomberman_datapath(
-	output reg [8:0] X_out, 
-	output reg [7:0] Y_out,
+	output [8:0] X_out, 
+	output [7:0] Y_out,
 	output [2:0] colour,
 	output finished, all_tiles_drawn, //game_over,
 	output write_en,
@@ -8,7 +8,7 @@ module bomberman_datapath(
 	input [1:0] memory_select,
 	input copy_enable, tc_enable,
 	input player_reset, stage_reset,
-	input draw_stage, draw_t, draw_p1, draw_p2,
+	input draw_stage, draw_t, draw_p1, draw_p2, refresh,
 	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
 	input p2_bomb, p2_xdir, p2_xmov, p2_ydir, p2_ymov,
 	input clock, reset
@@ -39,7 +39,7 @@ module bomberman_datapath(
 		.min_coord(9'd72),
 		.max_coord(9'd232),
 		.increment(p1_speed),
-		.clock(clock),
+		.clock(refresh),
 		.reset(player_reset),
 		.enable(p1_xmov),
 		.direction(p1_xdir)
@@ -51,7 +51,7 @@ module bomberman_datapath(
 		.min_coord(9'd32),
 		.max_coord(9'd192),
 		.increment(p1_speed),
-		.clock(clock),
+		.clock(refresh),
 		.reset(player_reset),
 		.enable(p2_ymov),
 		.direction(p1_ydir)
@@ -63,7 +63,7 @@ module bomberman_datapath(
 		.min_coord(9'd72),
 		.max_coord(9'd232),
 		.increment(p2_speed),
-		.clock(clock),
+		.clock(refresh),
 		.reset(player_reset),
 		.enable(p2_xmov),
 		.direction(p2_xdir)
@@ -75,7 +75,7 @@ module bomberman_datapath(
 		.min_coord(9'd32),
 		.max_coord(9'd192),
 		.increment(p2_speed),
-		.clock(clock),
+		.clock(refresh),
 		.reset(player_reset),
 		.enable(p2_ymov),
 		.direction(p2_ydir)
@@ -102,7 +102,7 @@ module bomberman_datapath(
 		.reset_n(reset),
 		.go(copy_enable),
 		.memory_select(memory_select),
-		.tile_select((game_stage_initial [((tile_count_y * 11) + tile_count_x]))),
+		.tile_select((game_stage_initial [((tile_count_y * 11) + tile_count_x)])),
 		.colour(colour),
 		.offset(offset),
 		.write_en(write_en),
