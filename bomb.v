@@ -135,7 +135,7 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 				else
 					game_stage[i] <= 2;
 		end
-		else if(place1 & can_place & (~bomb_reg[0][0] | ~bomb_reg[2][0] | ~bomb_reg[4][0])) // Place a bomb for Player 1
+		else if(placeP1 & can_place & (~bomb_reg[0][0] | ~bomb_reg[2][0] | ~bomb_reg[4][0])) // Place a bomb for Player 1
 		begin
 			begin
 				if(~bomb_reg[0][0])
@@ -161,7 +161,7 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 				end
 			end
 		end
-		else if(place2 & can_place & (~bomb_reg[1][0] | ~bomb_reg[3][0] | ~bomb_reg[5][0])) // Place a bomb for Player 2
+		else if(placeP2 & can_place & (~bomb_reg[1][0] | ~bomb_reg[3][0] | ~bomb_reg[5][0])) // Place a bomb for Player 2
 		begin
 			begin
 				if(~bomb_reg[1][0])
