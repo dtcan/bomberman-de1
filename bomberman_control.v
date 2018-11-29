@@ -8,7 +8,7 @@ module bomberman_control(
 	output reg draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
 	output [2:0] bomb_id,
 	output [1:0] p1_hp_id, p2_hp_id, corner_id,
-	output refresh, // maybe let datapath have it's own internal clock
+	output refresh, print_screen, // maybe let datapath have it's own internal clock
 	
 	input [1:0] p1_lives, p2_lives,
 	input go, finished, all_tiles_drawn,
@@ -131,7 +131,13 @@ module bomberman_control(
 				DRAW_P2_HP:			next_state = finished			? UPDATE_P2_HP : DRAW_P2_HP;	 // loop in DRAW_P2_HP until finished drawing current P2's HP.
 				UPDATE_P2_HP:		next_state = all_P2HP_drawn	? GAME_IDLE : DRAW_P2_HP;	 	 // loop back to DRAW_P2_HP until finished drawing all P2's HPs.
 				GAME_IDLE:			next_state = clock_60Hz			? UPDATE_STAGE : GAME_IDLE;	 // loop in GAME_IDLE until delay is complete. 
-				UPDATE_STAGE:		next_state = game_over			? LOAD_WIN_SCREEN : DRAW_TILE; // loop back to DRAW_TILE until a Player is killed.
+				UPDATE_STAGE:																						 // loop back to DRAW_TILE until a Player is killed after updating stage.
+					begin
+						if (game_over)
+							next_state = LOAD_WIN_SCREEN;
+						else if (!game_over & finished)
+							next_state = DRAW_TILE;
+					end
 				LOAD_WIN_SCREEN:	next_state = finished			? WIN_SCREEN : LOAD_WIN_SCREEN;// loop in LOAD_WIN_SCREEN until finished drawing win screen background.
 				WIN_SCREEN:			next_state = go					? LOAD_TITLE : WIN_SCREEN;		 // loop in WIN_SCREEN until user inputs to return to title.
 				default: next_state = LOAD_TITLE;
@@ -168,6 +174,8 @@ module bomberman_control(
 			lc_p2_enable = 0;
 			cc_reset = 0;
 			cc_enable = 0;
+			
+			print_screen = 0;
 			
 			case (current_state)
 				LOAD_TITLE:
@@ -305,6 +313,7 @@ module bomberman_control(
 					
 				UPDATE_STAGE:
 					begin
+						print_screen = 1;
 					end
 					
 				LOAD_WIN_SCREEN:
@@ -356,7 +365,7 @@ module delay_counter(clock_60Hz, clock, reset, enable);
 		end
 		
 	// sends high out signal ~60 times per second. 
-	assign clock_60Hz = (count == 20'd0)? 1 : 0;
+	assign clock_60Hz = (count == 20'd0)? 1'd1 : 1'd0;
 
 endmodule
 
@@ -385,7 +394,7 @@ module frame_counter(out, clock, reset, enable);
 		end
 	
 	// sends high out signal 1 time every 15 frames.
-	assign out = (count == 4'd0)? 1 : 0;
+	assign out = (count == 4'd0)? 1'd1 : 1'd0;
 
 endmodule
 
@@ -412,7 +421,7 @@ module bomb_counter(count, out, clock, reset, enable);
 				end
 		end
 		
-	assign out = (count == 3'd0) ? 1 : 0;
+	assign out = (count == 3'd0) ? 1'd1 : 1'd0;
 	
 endmodule
 

@@ -18,7 +18,7 @@ module bomberman_datapath(
 	input copy_enable, tc_enable,
 	input player_reset, tile_reset,
 	input draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
-	input refresh,
+	input refresh, print_screen,
 	
 	// signals from keyboard.
 	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
@@ -175,7 +175,7 @@ module bomberman_datapath(
 		.clk(clock),
 		.reset_n(reset),
 		.go(copy_enable),
-		.refresh(),
+		.refresh(print_screen),
 		.X(copy_X),
 		.Y(copy_Y),
 		.memory_select(memory_select),
@@ -200,21 +200,21 @@ module bomberman_datapath(
 			else
 				begin
 					if (p1_xdir)
-						p1_x_enable <= (p1_is_empty[1] & p1_is_empty[3] & p1_xmov) ? 1 : 0;
+						p1_x_enable <= (p1_is_empty[1] & p1_is_empty[3] & p1_xmov) ? 1'd1 : 1'd0;
 					else if (!p1_xdir)
-						p1_x_enable <= (p1_is_empty[0] & p1_is_empty[2] & p1_xmov) ? 1 : 0;
+						p1_x_enable <= (p1_is_empty[0] & p1_is_empty[2] & p1_xmov) ? 1'd1 : 1'd0;
 					else if (p1_ydir)
-						p1_y_enable <= (p1_is_empty[2] & p1_is_empty[3] & p1_ymov) ? 1 : 0;
+						p1_y_enable <= (p1_is_empty[2] & p1_is_empty[3] & p1_ymov) ? 1'd1 : 1'd0;
 					else if (!p1_ydir)
-						p1_y_enable <= (p1_is_empty[0] & p1_is_empty[1] & p1_ymov) ? 1 : 0;
+						p1_y_enable <= (p1_is_empty[0] & p1_is_empty[1] & p1_ymov) ? 1'd1 : 1'd0;
 					if (p2_xdir)
-						p2_x_enable <= (p2_is_empty[1] & p2_is_empty[3] & p2_xmov) ? 1 : 0;
+						p2_x_enable <= (p2_is_empty[1] & p2_is_empty[3] & p2_xmov) ? 1'd1 : 1'd0;
 					else if (!p2_xdir)
-						p2_x_enable <= (p2_is_empty[0] & p2_is_empty[2] & p2_xmov) ? 1 : 0;
+						p2_x_enable <= (p2_is_empty[0] & p2_is_empty[2] & p2_xmov) ? 1'd1 : 1'd0;
 					else if (p2_ydir)
-						p2_y_enable <= (p2_is_empty[2] & p2_is_empty[3] & p2_ymov) ? 1 : 0;
+						p2_y_enable <= (p2_is_empty[2] & p2_is_empty[3] & p2_ymov) ? 1'd1 : 1'd0;
 					else if (!p2_ydir)
-						p2_y_enable <= (p2_is_empty[0] & p2_is_empty[1] & p2_ymov) ? 1 : 0;
+						p2_y_enable <= (p2_is_empty[0] & p2_is_empty[1] & p2_ymov) ? 1'd1 : 1'd0;
 				end
 		end
 			
@@ -248,7 +248,7 @@ module bomberman_datapath(
 										p1_lives <= p1_lives - 1;
 										p1_ic_start <= 1;
 									end
-								p1_is_empty [0] <= (map_tile_id == 4'd0) ? 1 : 0;
+								p1_is_empty [0] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd1: // top right corner.
 							begin
@@ -259,7 +259,7 @@ module bomberman_datapath(
 										p1_lives <= p1_lives - 1;
 										p1_ic_start <= 1;
 									end
-								p1_is_empty [1] <= (map_tile_id == 4'd0) ? 1 : 0;
+								p1_is_empty [1] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd2: // bottom left corner.
 							begin
@@ -270,7 +270,7 @@ module bomberman_datapath(
 										p1_lives <= p1_lives - 1;
 										p1_ic_start <= 1;
 									end
-								p1_is_empty [2] <= (map_tile_id == 4'd0) ? 1 : 0;
+								p1_is_empty [2] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd3: // bottom right corner.
 							begin
@@ -281,7 +281,7 @@ module bomberman_datapath(
 										p1_lives <= p1_lives - 1;
 										p1_ic_start <= 1;
 									end
-								p1_is_empty [3] <= (map_tile_id == 4'd0) ? 1 : 0;
+								p1_is_empty [3] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end				
 					endcase
 				end
@@ -297,7 +297,7 @@ module bomberman_datapath(
 										p2_lives <= p2_lives - 1;
 										p2_ic_start <= 1;
 									end
-								p2_is_empty [0] <= (map_tile_id == 4'd0) ? 1 : 0;
+								p2_is_empty [0] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd1: // top right corner.
 							begin
@@ -308,7 +308,7 @@ module bomberman_datapath(
 										p2_lives <= p2_lives - 1;
 										p2_ic_start <= 1;
 									end
-								p2_is_empty [1] <= (map_tile_id == 4'd0) ? 1 : 0;
+								p2_is_empty [1] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd2: // bottom left corner.
 							begin
@@ -319,7 +319,7 @@ module bomberman_datapath(
 										p2_lives <= p2_lives - 1;
 										p2_ic_start <= 1;
 									end
-								p2_is_empty [2] <= (map_tile_id == 4'd0) ? 1 : 0;
+								p2_is_empty [2] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd3: // bottom right corner.
 							begin
@@ -330,7 +330,7 @@ module bomberman_datapath(
 										p2_lives <= p2_lives - 1;
 										p2_ic_start <= 1;
 									end
-								p2_is_empty [3] <= (map_tile_id == 4'd0) ? 1 : 0;
+								p2_is_empty [3] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end				
 					endcase
 				end
