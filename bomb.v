@@ -109,16 +109,34 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 		.q(bomb_counters[5])
 	);
 	
-	always @(posedge placeP1)
+	integer i = 0;
+	integer k = 0;
+	always @(posedge clk)
 	begin
-		if(placeP1)
+		reg can_place;
+		can place = (((bomb_reg[0][8:5] != rtX) | (bomb_reg[0][12:9] != rtY) | ~bomb_reg[0][0]) &
+			         ((bomb_reg[1][8:5] != rtX) | (bomb_reg[1][12:9] != rtY) | ~bomb_reg[1][0]) &
+			         ((bomb_reg[2][8:5] != rtX) | (bomb_reg[2][12:9] != rtY) | ~bomb_reg[2][0]) &
+			         ((bomb_reg[3][8:5] != rtX) | (bomb_reg[3][12:9] != rtY) | ~bomb_reg[3][0]) &
+			         ((bomb_reg[4][8:5] != rtX) | (bomb_reg[4][12:9] != rtY) | ~bomb_reg[4][0]) &
+			         ((bomb_reg[5][8:5] != rtX) | (bomb_reg[5][12:9] != rtY) | ~bomb_reg[5][0]));
+		
+		if(true_reset) // Reset block
 		begin
-			if(((bomb_reg[0][8:5] != rtX) | (bomb_reg[0][12:9] != rtY) | ~bomb_reg[0][0]) &
-			   ((bomb_reg[1][8:5] != rtX) | (bomb_reg[1][12:9] != rtY) | ~bomb_reg[1][0]) &
-			   ((bomb_reg[2][8:5] != rtX) | (bomb_reg[2][12:9] != rtY) | ~bomb_reg[2][0]) &
-			   ((bomb_reg[3][8:5] != rtX) | (bomb_reg[3][12:9] != rtY) | ~bomb_reg[3][0]) &
-			   ((bomb_reg[4][8:5] != rtX) | (bomb_reg[4][12:9] != rtY) | ~bomb_reg[4][0]) &
-			   ((bomb_reg[5][8:5] != rtX) | (bomb_reg[5][12:9] != rtY) | ~bomb_reg[5][0]))
+			bomb_reg[0] <= 0;
+			bomb_reg[1] <= 0;
+			bomb_reg[2] <= 0;
+			bomb_reg[3] <= 0;
+			bomb_reg[4] <= 0;
+			bomb_reg[5] <= 0;
+			for(i = 0; i < 121; i = i + 1)
+				if(init_stage[i] < 2)
+					game_stage[i] <= init_stage[i];
+				else
+					game_stage[i] <= 2;
+		end
+		else if(place1 & can_place & (~bomb_reg[0][0] | ~bomb_reg[2][0] | ~bomb_reg[4][0])) // Place a bomb for Player 1
+		begin
 			begin
 				if(~bomb_reg[0][0])
 				begin
@@ -143,18 +161,8 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 				end
 			end
 		end
-	end
-	
-	always @(posedge placeP2)
-	begin
-		if(placeP2)
+		else if(place2 & can_place & (~bomb_reg[1][0] | ~bomb_reg[3][0] | ~bomb_reg[5][0])) // Place a bomb for Player 2
 		begin
-			if(((bomb_reg[0][8:5] != rtX) | (bomb_reg[0][12:9] != rtY) | ~bomb_reg[0][0]) &
-			   ((bomb_reg[1][8:5] != rtX) | (bomb_reg[1][12:9] != rtY) | ~bomb_reg[1][0]) &
-			   ((bomb_reg[2][8:5] != rtX) | (bomb_reg[2][12:9] != rtY) | ~bomb_reg[2][0]) &
-			   ((bomb_reg[3][8:5] != rtX) | (bomb_reg[3][12:9] != rtY) | ~bomb_reg[3][0]) &
-			   ((bomb_reg[4][8:5] != rtX) | (bomb_reg[4][12:9] != rtY) | ~bomb_reg[4][0]) &
-			   ((bomb_reg[5][8:5] != rtX) | (bomb_reg[5][12:9] != rtY) | ~bomb_reg[5][0]))
 			begin
 				if(~bomb_reg[1][0])
 				begin
@@ -179,29 +187,9 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 				end
 			end
 		end
-	end
-	
-	integer i = 0;
-	integer k = 0;
-	always @(posedge clk)
-	begin
-		if(true_reset)
-		begin
-			bomb_reg[0] <= 0;
-			bomb_reg[1] <= 0;
-			bomb_reg[2] <= 0;
-			bomb_reg[3] <= 0;
-			bomb_reg[4] <= 0;
-			bomb_reg[5] <= 0;
-			for(i = 0; i < 121; i = i + 1)
-				if(init_stage[i] < 2)
-					game_stage[i] <= init_stage[i];
-				else
-					game_stage[i] <= 2;
-		end
 		else
 		begin
-			for(k = 0; k < 6; k = k + 1)
+			for(k = 0; k < 6; k = k + 1) // Check every counter, if 0 then reset bomb and destroy blocks 
 			begin
 				if(bomb_counters[k] == bc_max[k])
 				begin
@@ -316,7 +304,7 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 		end
 	end
 	
-	// TODO: Fix explosions wrapping around edges
+	// Update has_explosion
 	integer j = 0;
 	always @(*)
 	begin
