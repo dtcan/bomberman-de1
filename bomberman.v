@@ -25,18 +25,9 @@ module bomberman
 	
 	// For debugging: (p1 inputs LEDR[0-4]. p2 inputs LEDR[5-9])
 	output [9:0] LEDR;
-	assign p1_bomb = LEDR[0];
-	assign p1_xdir = LEDR[1];
-	assign p1_xmov = LEDR[2];
-	assign p1_ydir = LEDR[3];
-	assign p1_ymov = LEDR[4];
-	assign p2_bomb = LEDR[5];
-	assign p2_xdir = LEDR[6];
-	assign p2_xmov = LEDR[7];
-	assign p2_ydir = LEDR[8];
-	assign p2_ymov = LEDR[9];
+	assign LEDR = {p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov, p2_bomb, p2_xdir, p2_xmov, p2_ydir, p2_ymov};
 	// Temporary for debugging:
-	assign game_over = ~KEY[1];
+//	assign game_over = ~KEY[1];
 	
 	// Do not change the following outputs
 	output			VGA_CLK;   				//	VGA Clock
@@ -52,9 +43,13 @@ module bomberman
 	wire p1_bomb, p2_bomb, p1_xdir, p2_xdir, p1_ydir, p2_ydir, p1_xmov, p2_xmov, p1_ymov, p2_ymov;
 	
 	// wires for control/datapath inputs/ outputs.
-	wire [1:0] memory_select;
-	wire copy_enable, tc_enable, player_reset, stage_reset, draw_stage, draw_t, draw_p1, draw_p2, refresh;
-	wire finished, all_tiles_drawn, game_over;
+	wire [2:0] bomb_id;
+	wire [1:0] memory_select, p1_hp_id, p2_hp_id, corner_id;
+	wire [1:0] p1_lives, p2_lives;
+	wire copy_enable, tc_enable, player_reset, tile_reset;
+	wire draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp;
+	wire refresh;
+	wire finished, all_tiles_drawn;
 	
 	// wires for datapath/VGA inputs/ outputs.
 	wire [2:0] colour;
@@ -116,16 +111,27 @@ module bomberman
 		.copy_enable(copy_enable),
 		.tc_enable(tc_enable),
 		.player_reset(player_reset),
-		.stage_reset(stage_reset),
+		.tile_reset(tile_reset),
 		.draw_stage(draw_stage),
-		.draw_t(draw_t),
+		.draw_tile(draw_tile),
+		.draw_explosion(draw_explosion),
+		.draw_bomb(draw_bomb),
+		.check_p1(check_p1),
 		.draw_p1(draw_p1),
+		.draw_p1_hp(draw_p1_hp),
+		.check_p2(check_p2),
 		.draw_p2(draw_p2),
+		.draw_p2_hp(draw_p2_hp),
+		.bomb_id(bomb_id),
+		.p1_hp_id(p1_hp_id),
+		.p2_hp_id(p2_hp_id),
+		.corner_id(corner_id),
 		.refresh(refresh),
+		.p1_lives(p1_lives),
+		.p2_lives(p2_lives),
 		.go(p1_bomb),
 		.finished(finished),
 		.all_tiles_drawn(all_tiles_drawn),
-		.game_over(game_over),
 		.clock(CLOCK_50),
 		.reset(reset)
 	);
@@ -136,19 +142,30 @@ module bomberman
 		.X_out(x),
 		.Y_out(y),
 		.colour(colour),
+		.write_en(write_en),
+		.p1_lives(p1_lives),
+		.p2_lives(p2_lives),
 		.finished(finished),
 		.all_tiles_drawn(all_tiles_drawn),
-//		.game_over(game_over),
-		.write_en(write_en),
+		.bomb_id(bomb_id),
 		.memory_select(memory_select),
+		.p1_hp_id(p1_hp_id),
+		.p2_hp_id(p2_hp_id),
+		.corner_id(corner_id),
 		.copy_enable(copy_enable),
 		.tc_enable(tc_enable),
 		.player_reset(player_reset),
-		.stage_reset(stage_reset),
+		.tile_reset(tile_reset),
 		.draw_stage(draw_stage),
-		.draw_t(draw_t),
+		.draw_tile(draw_tile),
+		.draw_explosion(draw_explosion),
+		.draw_bomb(draw_bomb),
+		.check_p1(check_p1),
 		.draw_p1(draw_p1),
+		.draw_p1_hp(draw_p1_hp),
+		.check_p2(check_p2),
 		.draw_p2(draw_p2),
+		.draw_p2_hp(draw_p2_hp),
 		.refresh(refresh),
 		.p1_bomb(p1_bomb),
 		.p1_xdir(p1_xdir),
