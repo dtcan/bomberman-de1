@@ -1,20 +1,31 @@
-module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_en, finished);
-	input clk, reset_n, go;
+module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, Y_out, colour, write_en, finished);
+	input clk, reset_n, go, refresh;
+	input [8:0] X;
+	input [7:0] Y;
 	input [1:0] memory_select;
 	input [3:0] tile_select;
+	output [8:0] X_out;
+	output [7:0] Y_out;
+	output [5:0] colour;
 	output reg write_en, finished;
-	output reg [14:0] colour;
-	output reg [16:0] offset;
 	
 	localparam WIDTH = 320, HEIGHT = 240; // Still have to go change bit-widths when changing these!
-	localparam BITS_PER_COLOUR = 5;       // When changing, also change colour reg and wire widths
+	localparam BITS_PER_COLOUR = 2;       // When changing, also change colour reg and wire widths
 	
-	wire [14:0] colour_1, colour_2, colour_3, colour_t;
+	reg [5:0] buffer [0:(WIDTH * HEIGHT) - 1];
+	reg [5:0] colour_b;
+	wire [5:0] colour_1, colour_2, colour_3, colour_t;
 	wire [8:0] offset_x;
 	wire [7:0] offset_y;
 	wire [7:0] offset_t;
+	reg [16:0] offset;
 	reg enable_count;
 	reg [16:0] adr;
+	reg refreshing;
+	
+	assign X_out = offset_x;
+	assign Y_out = offset_y;
+	assign colour = buffer[(Y_out * WIDTH) + X_out];
 	
 	count8 c0(
 		.clk(clk),
@@ -26,7 +37,7 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 	count_xy c1(
 		.clk(clk),
 		.reset_n(reset_n),
-		.enable(enable_count & (memory_select != 2'b11)),
+		.enable(enable_count & ((memory_select != 2'b11) | refreshing)),
 		.max_x(WIDTH),
 		.max_y(HEIGHT),
 		.q_x(offset_x),
@@ -36,13 +47,13 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 	always @(*)
 	begin
 		case(memory_select)
-			2'b00: colour = colour_1;
-			2'b01: colour = colour_2;
-			2'b10: colour = colour_3;
-			2'b11: colour = colour_t;
+			2'b00: colour_b = colour_1;
+			2'b01: colour_b = colour_2;
+			2'b10: colour_b = colour_3;
+			2'b11: colour_b = colour_t;
 		endcase
 		
-		if(memory_select == 2'b11)
+		if((memory_select == 2'b11) & ~refreshing)
 			offset = {4'd0, offset_t[7:4], 5'd0, offset_t[3:0]};
 		else
 			offset = {offset_y, offset_x};
@@ -115,28 +126,40 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 		TileSet.CLOCK_ENABLE_INPUT_A = "BYPASS",
 		TileSet.POWER_UP_UNINITIALIZED = "FALSE",
 		TileSet.INIT_FILE = "tilesheet.mif";
-
+	
 	reg [3:0] Q, Qn;
-	localparam S_RESET          = 3'b000,
-	           S_WAIT           = 3'b001,
-	           S_SELECT         = 3'b010,
-	           S_READ           = 3'b011,
-	           S_DRAW           = 3'b100,
-	           S_INCREMENT      = 3'b101,
-	           S_INCREMENT_HOLD = 3'b110,
-	           S_FINISH         = 3'b111;
+	localparam S_RESET          = 4'b0000,
+	           S_WAIT           = 4'b0001,
+	           S_SELECT         = 4'b0010,
+	           S_READ           = 4'b0011,
+	           S_DRAW_BUFFER    = 4'b0100,
+	           S_INCREMENT      = 4'b0101,
+	           S_INCREMENT_HOLD = 4'b0110,
+	           S_FINISH         = 4'b0111,
+	           S_ENABLE_REFRESH = 4'b1000,
+			   S_DRAW           = 4'b1001;
 	
 	always @(*)
 	begin
 		case(Q)
 			S_RESET: Qn = S_WAIT;
-			S_WAIT: Qn = go ? S_SELECT : S_WAIT;
+			S_WAIT:
+			begin
+				if(refresh)
+					Qn = S_ENABLE_REFRESH;
+				else if(go)
+					Qn = S_SELECT;
+				else
+					Qn = S_WAIT;
+			end
 			S_SELECT: Qn = S_READ;
-			S_READ: Qn = S_DRAW;
-			S_DRAW: Qn = S_INCREMENT;
+			S_READ: Qn = refreshing ? S_DRAW : S_DRAW_BUFFER;
+			S_DRAW_BUFFER: Qn = S_INCREMENT;
 			S_INCREMENT: Qn = S_INCREMENT_HOLD;
 			S_INCREMENT_HOLD: Qn = |offset ? S_SELECT : S_FINISH;
 			S_FINISH: Qn = S_RESET;
+			S_ENABLE_REFRESH: Qn = S_SELECT;
+			S_DRAW: Qn = S_INCREMENT;
 		endcase
 	end
 	
@@ -154,21 +177,32 @@ module copy(clk, reset_n, go, memory_select, tile_select, colour, offset, write_
 	
 	always @(posedge clk)
 	begin
-		if(Q == S_RESET)
-			adr <= 0;
-		else if(Q == S_SELECT)
-		begin
-			if(memory_select == 2'b11)
-				adr <= ({tile_select[3:2], offset[7:4]} * WIDTH) + {tile_select[1:0], offset[3:0]};
-			else
-				adr <= (offset_y * WIDTH) + offset_x;
-		end
+		case(Q)
+			S_RESET:
+			begin
+				adr <= 0;
+				refreshing <= 0;
+			end
+			S_SELECT:
+			begin
+				if(memory_select == 2'b11)
+					adr <= ({tile_select[3:2], offset_t[7:4]} * 64) + {tile_select[1:0], offset_t[3:0]};
+				else
+					adr <= (offset_y * WIDTH) + offset_x;
+			end
+			S_DRAW_BUFFER:
+			begin
+				if(colour != 6'b001100) // !!!!! Change when changing colour width
+					buffer[((Y + offset[16:9]) * WIDTH) + X + offset[8:0]] <= colour_b;
+			end
+			S_ENABLE_REFRESH: refreshing <= 1;
+		endcase
 	end
 	
 	always @(posedge clk)
 	begin
 		if(reset_n)
-			Q <= 3'b000;
+			Q <= 4'b0000;
 		else
 			Q <= Qn;
 	end
