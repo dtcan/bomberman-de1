@@ -114,7 +114,7 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	always @(posedge clk)
 	begin
 		reg can_place;
-		can place = (((bomb_reg[0][8:5] != rtX) | (bomb_reg[0][12:9] != rtY) | ~bomb_reg[0][0]) &
+		can_place = (((bomb_reg[0][8:5] != rtX) | (bomb_reg[0][12:9] != rtY) | ~bomb_reg[0][0]) &
 			         ((bomb_reg[1][8:5] != rtX) | (bomb_reg[1][12:9] != rtY) | ~bomb_reg[1][0]) &
 			         ((bomb_reg[2][8:5] != rtX) | (bomb_reg[2][12:9] != rtY) | ~bomb_reg[2][0]) &
 			         ((bomb_reg[3][8:5] != rtX) | (bomb_reg[3][12:9] != rtY) | ~bomb_reg[3][0]) &
