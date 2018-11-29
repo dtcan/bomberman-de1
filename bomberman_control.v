@@ -6,9 +6,10 @@ module bomberman_control(
 	output reg copy_enable, tc_enable,
 	output reg player_reset, tile_reset,
 	output reg draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
+	output reg print_screen,
 	output [2:0] bomb_id,
 	output [1:0] p1_hp_id, p2_hp_id, corner_id,
-	output refresh, print_screen, // maybe let datapath have it's own internal clock
+	output refresh, // maybe let datapath have it's own internal clock
 	
 	input [1:0] p1_lives, p2_lives,
 	input go, finished, all_tiles_drawn,

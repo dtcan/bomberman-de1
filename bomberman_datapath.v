@@ -245,8 +245,8 @@ module bomberman_datapath(
 								bomb_Y <= p1_Y;
 								if (has_explosion & !p1_is_invincible)
 									begin
-										p1_lives <= p1_lives - 1;
-										p1_ic_start <= 1;
+										p1_lives <= p1_lives - 1'd1;
+										p1_ic_start <= 1'd1;
 									end
 								p1_is_empty [0] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
@@ -256,8 +256,8 @@ module bomberman_datapath(
 								bomb_Y <= p1_Y;
 								if (has_explosion & !p1_is_invincible)
 									begin
-										p1_lives <= p1_lives - 1;
-										p1_ic_start <= 1;
+										p1_lives <= p1_lives - 1'd1;
+										p1_ic_start <= 1'd1;
 									end
 								p1_is_empty [1] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
@@ -267,8 +267,8 @@ module bomberman_datapath(
 								bomb_Y <= p1_Y + 8'd15;
 								if (has_explosion & !p1_is_invincible)
 									begin
-										p1_lives <= p1_lives - 1;
-										p1_ic_start <= 1;
+										p1_lives <= p1_lives - 1'd1;
+										p1_ic_start <= 1'd1;
 									end
 								p1_is_empty [2] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
@@ -278,8 +278,8 @@ module bomberman_datapath(
 								bomb_Y <= p1_Y + 8'd15;
 								if (has_explosion & !p1_is_invincible)
 									begin
-										p1_lives <= p1_lives - 1;
-										p1_ic_start <= 1;
+										p1_lives <= p1_lives - 1'd1;
+										p1_ic_start <= 1'd1;
 									end
 								p1_is_empty [3] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end				
@@ -294,8 +294,8 @@ module bomberman_datapath(
 								bomb_Y <= p2_Y;
 								if (has_explosion & !p2_is_invincible)
 									begin
-										p2_lives <= p2_lives - 1;
-										p2_ic_start <= 1;
+										p2_lives <= p2_lives - 1'd1;
+										p2_ic_start <= 1'd1;
 									end
 								p2_is_empty [0] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
@@ -305,8 +305,8 @@ module bomberman_datapath(
 								bomb_Y <= p2_Y;
 								if (has_explosion & !p2_is_invincible)
 									begin
-										p2_lives <= p2_lives - 1;
-										p2_ic_start <= 1;
+										p2_lives <= p2_lives - 1'd1;
+										p2_ic_start <= 1'd1;
 									end
 								p2_is_empty [1] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
@@ -316,8 +316,8 @@ module bomberman_datapath(
 								bomb_Y <= p2_Y + 8'd15;
 								if (has_explosion & !p2_is_invincible)
 									begin
-										p2_lives <= p2_lives - 1;
-										p2_ic_start <= 1;
+										p2_lives <= p2_lives - 1'd1;
+										p2_ic_start <= 1'd1;
 									end
 								p2_is_empty [2] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
@@ -327,8 +327,8 @@ module bomberman_datapath(
 								bomb_Y <= p2_Y + 8'd15;
 								if (has_explosion & !p2_is_invincible)
 									begin
-										p2_lives <= p2_lives - 1;
-										p2_ic_start <= 1;
+										p2_lives <= p2_lives - 1'd1;
+										p2_ic_start <= 1'd1;
 									end
 								p2_is_empty [3] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end				
@@ -509,7 +509,7 @@ endmodule
 
 // counter module for specified length (in seconds)[max 3s] of time.
 // active-high reset.
-module invincibility(is_invincible, length, clock, reset, start);
+module invincibility_counter(is_invincible, length, clock, reset, start);
 	
 	output is_invincible;
 	
