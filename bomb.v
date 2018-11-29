@@ -109,25 +109,6 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 		.q(bomb_counters[5])
 	);
 	
-	integer i = 0;
-	always @(posedge true_reset)
-	begin
-		if(true_reset)
-		begin
-			bomb_reg[0] <= 0;
-			bomb_reg[1] <= 0;
-			bomb_reg[2] <= 0;
-			bomb_reg[3] <= 0;
-			bomb_reg[4] <= 0;
-			bomb_reg[5] <= 0;
-			for(i = 0; i < 121; i = i + 1)
-				if(init_stage[i] < 2)
-					game_stage[i] <= init_stage[i];
-				else
-					game_stage[i] <= 2;
-		end
-	end
-	
 	always @(posedge placeP1)
 	begin
 		if(placeP1)
@@ -200,117 +181,135 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 		end
 	end
 	
+	integer i = 0;
 	integer k = 0;
-	always @(posedge clock_1Hz)
+	always @(posedge clk)
 	begin
-		for(k = 0; k < 6; k = k + 1)
+		if(true_reset)
 		begin
-			if(bomb_counters[k] == bc_max[k])
+			bomb_reg[0] <= 0;
+			bomb_reg[1] <= 0;
+			bomb_reg[2] <= 0;
+			bomb_reg[3] <= 0;
+			bomb_reg[4] <= 0;
+			bomb_reg[5] <= 0;
+			for(i = 0; i < 121; i = i + 1)
+				if(init_stage[i] < 2)
+					game_stage[i] <= init_stage[i];
+				else
+					game_stage[i] <= 2;
+		end
+		else
+		begin
+			for(k = 0; k < 6; k = k + 1)
 			begin
-				bomb_reg[k] <= 0;
-				
-				// Radius 1
-				if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] == 2) &
-				   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] != 2))
-					game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1];
-				else
-					game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] <= 0;
-				
-				if((game_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] == 2) &
-				   (init_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] != 2))
-					game_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]];
-				else
-					game_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] <= 0;
-				
-				if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] == 2) &
-				   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] != 2))
-					game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1];
-				else
-					game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] <= 0;
-				
-				if((game_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] == 2) &
-				   (init_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] != 2))
-					game_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]];
-				else
-					game_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] <= 0;
-				
-				// Radius 2
-				if(bomb_reg[k][4:3] >= 1)
+				if(bomb_counters[k] == bc_max[k])
 				begin
-					if(game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] == 0)
+					bomb_reg[k] <= 0;
+					
+					// Radius 1
+					if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] == 2) &
+					   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] != 2))
+						game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1];
+					else
+						game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] <= 0;
+					
+					if((game_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] == 2) &
+					   (init_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] != 2))
+						game_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]];
+					else
+						game_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] <= 0;
+					
+					if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] == 2) &
+					   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] != 2))
+						game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1];
+					else
+						game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] <= 0;
+					
+					if((game_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] == 2) &
+					   (init_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] != 2))
+						game_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]];
+					else
+						game_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] <= 0;
+					
+					// Radius 2
+					if(bomb_reg[k][4:3] >= 1)
 					begin
-						if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2] == 2) &
-						   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2] != 2))
-							game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2];
-						else
-							game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2] <= 0;
+						if(game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] == 0)
+						begin
+							if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2] == 2) &
+							   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2] != 2))
+								game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2];
+							else
+								game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2] <= 0;
+						end
+						
+						if(game_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] == 0)
+						begin
+							if((game_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]] == 2) &
+							   (init_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]] != 2))
+								game_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]];
+							else
+								game_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]] <= 0;
+						end
+						
+						if(game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] == 0)
+						begin
+							if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2] == 2) &
+							   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2] != 2))
+								game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2];
+							else
+								game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2] <= 0;
+						end
+						
+						if(game_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] == 0)
+						begin
+							if((game_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]] == 2) &
+							   (init_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]] != 2))
+								game_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]];
+							else
+								game_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]] <= 0;
+						end
 					end
 					
-					if(game_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] == 0)
+					// Radius 3
+					if(bomb_reg[k][4:3] >= 2)
 					begin
-						if((game_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]] == 2) &
-						   (init_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]] != 2))
-							game_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]];
-						else
-							game_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]] <= 0;
-					end
-					
-					if(game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] == 0)
-					begin
-						if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2] == 2) &
-						   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2] != 2))
-							game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2];
-						else
-							game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2] <= 0;
-					end
-					
-					if(game_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] == 0)
-					begin
-						if((game_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]] == 2) &
-						   (init_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]] != 2))
-							game_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]];
-						else
-							game_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]] <= 0;
-					end
-				end
-				
-				// Radius 3
-				if(bomb_reg[k][4:3] >= 2)
-				begin
-					if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] == 0) & (game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2] == 0))
-					begin
-						if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 3] == 2) &
-						   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 3] != 2))
-							game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 3] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 3];
-						else
-							game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 3] <= 0;
-					end
-					
-					if((game_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] == 0) & (game_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]] == 0))
-					begin
-						if((game_stage[((bomb_reg[k][12:9] + 3) * 11) + bomb_reg[k][8:5]] == 2) &
-						   (init_stage[((bomb_reg[k][12:9] + 3) * 11) + bomb_reg[k][8:5]] != 2))
-							game_stage[((bomb_reg[k][12:9] + 3) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] + 3) * 11) + bomb_reg[k][8:5]];
-						else
-							game_stage[((bomb_reg[k][12:9] + 3) * 11) + bomb_reg[k][8:5]] <= 0;
-					end
-					
-					if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] == 0) & (game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2] == 0))
-					begin
-						if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 3] == 2) &
-						   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 3] != 2))
-							game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 3] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 3];
-						else
-							game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 3] <= 0;
-					end
-					
-					if((game_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] == 0) & (game_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]] == 0))
-					begin
-						if((game_stage[((bomb_reg[k][12:9] - 3) * 11) + bomb_reg[k][8:5]] == 2) &
-						   (init_stage[((bomb_reg[k][12:9] - 3) * 11) + bomb_reg[k][8:5]] != 2))
-							game_stage[((bomb_reg[k][12:9] - 3) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] - 3) * 11) + bomb_reg[k][8:5]];
-						else
-							game_stage[((bomb_reg[k][12:9] - 3) * 11) + bomb_reg[k][8:5]] <= 0;
+						if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] == 0) & (game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 2] == 0))
+						begin
+							if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 3] == 2) &
+							   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 3] != 2))
+								game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 3] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 3];
+							else
+								game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 3] <= 0;
+						end
+						
+						if((game_stage[((bomb_reg[k][12:9] + 1) * 11) + bomb_reg[k][8:5]] == 0) & (game_stage[((bomb_reg[k][12:9] + 2) * 11) + bomb_reg[k][8:5]] == 0))
+						begin
+							if((game_stage[((bomb_reg[k][12:9] + 3) * 11) + bomb_reg[k][8:5]] == 2) &
+							   (init_stage[((bomb_reg[k][12:9] + 3) * 11) + bomb_reg[k][8:5]] != 2))
+								game_stage[((bomb_reg[k][12:9] + 3) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] + 3) * 11) + bomb_reg[k][8:5]];
+							else
+								game_stage[((bomb_reg[k][12:9] + 3) * 11) + bomb_reg[k][8:5]] <= 0;
+						end
+						
+						if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 1] == 0) & (game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 2] == 0))
+						begin
+							if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 3] == 2) &
+							   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 3] != 2))
+								game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 3] <= init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 3];
+							else
+								game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] - 3] <= 0;
+						end
+						
+						if((game_stage[((bomb_reg[k][12:9] - 1) * 11) + bomb_reg[k][8:5]] == 0) & (game_stage[((bomb_reg[k][12:9] - 2) * 11) + bomb_reg[k][8:5]] == 0))
+						begin
+							if((game_stage[((bomb_reg[k][12:9] - 3) * 11) + bomb_reg[k][8:5]] == 2) &
+							   (init_stage[((bomb_reg[k][12:9] - 3) * 11) + bomb_reg[k][8:5]] != 2))
+								game_stage[((bomb_reg[k][12:9] - 3) * 11) + bomb_reg[k][8:5]] <= init_stage[((bomb_reg[k][12:9] - 3) * 11) + bomb_reg[k][8:5]];
+							else
+								game_stage[((bomb_reg[k][12:9] - 3) * 11) + bomb_reg[k][8:5]] <= 0;
+						end
 					end
 				end
 			end
