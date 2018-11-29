@@ -4,19 +4,32 @@
 module bomberman_control(
 	output reg [1:0] memory_select,
 	output reg copy_enable, tc_enable,
-	output reg player_reset, stage_reset,
-	output reg draw_stage, draw_t, draw_p1, draw_p2,
-	output refresh,
+	output reg player_reset, tile_reset,
+	output reg draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
+	output [2:0] bomb_id,
+	output [1:0] p1_hp_id, p2_hp_id, corner_id,
+	output refresh, // maybe let datapath have it's own internal clock
 	
-	input go, finished, all_tiles_drawn, game_over,
+	input [1:0] p1_lives, p2_lives,
+	input go, finished, all_tiles_drawn,
 	input clock,
 	input reset
 	);
 	
+	// internal registers and wires.
 	reg [3:0] current_state, next_state;
-	reg dc_reset, dc_enable;
+	reg dc_reset, dc_enable; 						// for delay counter
+	reg bc_reset, bc_enable; 						// for bomb counter
+	reg lc_reset, lc_p1_enable, lc_p2_enable; // for lives counter
+	reg cc_reset, cc_enable;						// for corner counter
 	
-	wire clock_60Hz;// refresh;
+	wire clock_60Hz;			 						// internal clock @ 60Hz
+	
+	wire all_bombs_drawn, all_checked, all_P1HP_drawn, all_P2HP_drawn;
+	wire game_over;
+	
+	// game_over condition.
+	assign game_over = ((p1_lives == 2'd0) | (p2_lives == 2'd0)) ? 1 : 0; 
 	
 	delay_counter dc(
 		.clock_60Hz(clock_60Hz),
@@ -33,21 +46,67 @@ module bomberman_control(
 		.enable(dc_enable)
 		);
 	
+	bomb_counter bc(
+		.count(bomb_id),
+		.out(all_bombs_drawn),
+		.clock(clock),
+		.reset(bc_reset),
+		.enable(bc_enable)
+		);
+		
+	counter lc_p1(
+		.count(p1_hp_id),
+		.out(all_P1HP_drawn),
+		.count_to((p1_lives - 2'd1)),
+		.clock(clock),
+		.reset(lc_reset),
+		.enable(lc_p1_enable)
+		);
+	
+	counter lc_p2(
+		.count(p2_hp_id),
+		.out(all_P2HP_drawn),
+		.count_to((p2_lives - 2'd1)),
+		.clock(clock),
+		.reset(lc_reset),
+		.enable(lc_p2_enable)
+		);
+		
+	counter corner(
+		.count(corner_id),
+		.out(all_checked),
+		.count_to(2'd3),
+		.clock(clock),
+		.reset(cc_reset),
+		.enable(cc_enable)
+		);
+		
 	// declare states``
-	localparam	LOAD_TITLE			= 4'd0,	// draw title screen background.
-					TITLE					= 4'd1,	// wait for user input to start game.
-					LOAD_STAGE 			= 4'd2,	// draw stage screen background.
+	localparam	LOAD_TITLE			= 5'd0,	// draw title screen background.
+					TITLE					= 5'd1,	// wait for user input to start game.
+					LOAD_STAGE 			= 5'd2,	// draw stage screen background.
 	
 					// states for drawing game stage tiles and sprites.
-					DRAW_TILE			= 4'd3,	// draw stage tiles.
-					UPDATE_TILE			= 4'd4,	// update tile counter.
-					DRAW_P1				= 4'd5,	// draw player 1's sprite.
-					DRAW_P2				= 4'd6, 	// draw player 2's sprite.
-					GAME_IDLE			= 4'd7,	// wait for delay.
-					UPDATE_STAGE		= 4'd8,	// update memory file.
+					DRAW_TILE			= 5'd3,	// draw stage tile.
+					DRAW_EXPLOSION		= 5'd4, 	// draw explosion (if it exists) on stage tile.
+					UPDATE_TILE			= 5'd5,	// update tile counter.
+					DRAW_BOMB			= 5'd6,	// draw bomb tiles.
+					UPDATE_BOMB			= 5'd7,  // update bomb counter.
+					CHECK_P1_CORNER	= 5'd8,  // check tile of corner pixel.
+					UPDATE_P1_CORNER	= 5'd9,  // update corner pixel.
+					DRAW_P1				= 5'd10,	// draw player 1's sprite.
+					DRAW_P1_HP		 	= 5'd11, // draw player 1's health.
+					UPDATE_P1_HP		= 5'd12, // update player 1's health.
+					CHECK_P2_CORNER	= 5'd13, // check tile of corner pixel.
+					UPDATE_P2_CORNER	= 5'd14, // update corner pixel.
+					DRAW_P2				= 5'd15, // draw player 2's sprite.
+					DRAW_P2_HP			= 5'd16, // draw player 2's health.
+					UPDATE_P2_HP		= 5'd17,	// update player 2's health.
+					GAME_IDLE			= 5'd18,	// wait for delay.
+					UPDATE_STAGE		= 5'd19,	// update memory file.
 					
-					LOAD_WIN_SCREEN	= 4'd10,	// draw win screen background.
-					WIN_SCREEN			= 4'd11;	// wait for user input to return to title screen.
+					LOAD_WIN_SCREEN	= 5'd20,	// draw win screen background.
+					WIN_SCREEN			= 5'd21;	// wait for user input to return to title screen.
 
 	// state table
 	always @ (*)
@@ -56,11 +115,22 @@ module bomberman_control(
 				LOAD_TITLE: 		next_state = finished 			? TITLE : LOAD_TITLE; 			 // loop in LOAD_TITLE until finished drawing title background.
 				TITLE:				next_state = go					? LOAD_STAGE : TITLE;			 // loop in TITLE until user inputs to start game.
 				LOAD_STAGE:			next_state = finished			? DRAW_TILE : LOAD_STAGE;		 // loop in LOAD_STAGE until finished drawing stage background.
-				DRAW_TILE:			next_state = finished 			? UPDATE_TILE : DRAW_TILE;		 // loop in DRAW_TILE until finished drawing stage tile.
-				UPDATE_TILE:		next_state = all_tiles_drawn	? DRAW_P1 : DRAW_TILE;		 	 // loop back to DRAW_TILE until finished drawing all tiles.
-				DRAW_P1:				next_state = finished			? DRAW_P2 : DRAW_P1;				 // loop in DRAW_P1 until finished drawing Player 1's sprite.
-				DRAW_P2: 			next_state = finished 			? GAME_IDLE : DRAW_P2;			 // loop in DRAW_P2 until finished drawing Player 2's sprite.
-				GAME_IDLE:			next_state = refresh				? UPDATE_STAGE : GAME_IDLE;	 // loop in GAME_IDLE until delay is complete. 
+				DRAW_TILE:			next_state = finished 			? DRAW_EXPLOSION : DRAW_TILE;	 // loop in DRAW_TILE until finished drawing stage tile.
+				DRAW_EXPLOSION:	next_state = finished			? UPDATE_TILE : DRAW_EXPLOSION;// loop in DRAW_EXPLOSION until finished drawing explosion on stage tile.
+				UPDATE_TILE:		next_state = all_tiles_drawn	? DRAW_BOMB : DRAW_TILE;		 // loop back to DRAW_TILE until finished drawing all tiles.
+				DRAW_BOMB:			next_state = finished 			? UPDATE_BOMB : DRAW_BOMB;		 // loop in DRAW_BOMB until finished drawing current bomb.
+				UPDATE_BOMB:		next_state = all_bombs_drawn	? CHECK_P1_CORNER : DRAW_BOMB; // loop back to DRAW_BOMB until finished drawing all bombs.
+				CHECK_P1_CORNER:	next_state = UPDATE_P1_CORNER;										 	
+				UPDATE_P1_CORNER:	next_state = all_checked		? DRAW_P1 : CHECK_P1_CORNER;	 // loop back to CHECK_P1_CORNER until all 4 corners are checked.
+				DRAW_P1:				next_state = finished			? DRAW_P1_HP : DRAW_P1;	 		 // loop in DRAW_P1 until finished drawing Player 1's sprite.
+				DRAW_P1_HP:			next_state = finished			? UPDATE_P1_HP : DRAW_P1_HP;	 // loop in DRAW_P1_HP until finished drawing current P1's HP.
+				UPDATE_P1_HP:		next_state = all_P1HP_drawn	? CHECK_P2_CORNER : DRAW_P1_HP;// loop back to DRAW_P1_HP until finished drawing all P1's HPs.
+				CHECK_P2_CORNER:	next_state = UPDATE_P2_CORNER;
+				UPDATE_P2_CORNER: next_state = all_checked		? DRAW_P2 : CHECK_P2_CORNER;	 // loop back to CHECK_P2_CORNER until all 4 corners are checked.
+				DRAW_P2: 			next_state = finished 			? DRAW_P2_HP : DRAW_P2;			 // loop in DRAW_P2 until finished drawing Player 2's sprite.
+				DRAW_P2_HP:			next_state = finished			? UPDATE_P2_HP : DRAW_P2_HP;	 // loop in DRAW_P2_HP until finished drawing current P2's HP.
+				UPDATE_P2_HP:		next_state = all_P2HP_drawn	? GAME_IDLE : DRAW_P2_HP;	 	 // loop back to DRAW_P2_HP until finished drawing all P2's HPs.
+				GAME_IDLE:			next_state = clock_60Hz			? UPDATE_STAGE : GAME_IDLE;	 // loop in GAME_IDLE until delay is complete. 
 				UPDATE_STAGE:		next_state = game_over			? LOAD_WIN_SCREEN : DRAW_TILE; // loop back to DRAW_TILE until a Player is killed.
 				LOAD_WIN_SCREEN:	next_state = finished			? WIN_SCREEN : LOAD_WIN_SCREEN;// loop in LOAD_WIN_SCREEN until finished drawing win screen background.
 				WIN_SCREEN:			next_state = go					? LOAD_TITLE : WIN_SCREEN;		 // loop in WIN_SCREEN until user inputs to return to title.
@@ -76,15 +146,28 @@ module bomberman_control(
 			copy_enable = 0;
 			tc_enable = 0;
 			player_reset = 0;
-			stage_reset = 0;
+			tile_reset = 0;
 			
 			draw_stage = 0;
-			draw_t = 0;
+			draw_tile = 0;
+			draw_explosion = 0;
+			draw_bomb = 0;
+			check_p1 = 0;
 			draw_p1 = 0;
+			draw_p1_hp = 0;
+			check_p2 = 0;
 			draw_p2 = 0;
+			draw_p2_hp = 0;
 			
 			dc_reset = 0;
 			dc_enable = 0;
+			bc_reset = 0;
+			bc_enable = 0;
+			lc_reset = 0;
+			lc_p1_enable = 0;
+			lc_p2_enable = 0;
+			cc_reset = 0;
+			cc_enable = 0;
 			
 			case (current_state)
 				LOAD_TITLE:
@@ -93,52 +176,144 @@ module bomberman_control(
 						copy_enable = 1;
 						draw_stage = 1;
 					end
+					
 				TITLE:
 					begin
 					end
+					
 				LOAD_STAGE:
 					begin
 						memory_select = 2'd1;
 						copy_enable = 1;
 						draw_stage = 1;
 						player_reset = 1;
+						tile_reset = 1;						
 						dc_reset = 1;
+						bc_reset = 1;
+						lc_reset = 1;
 					end
+					
 				DRAW_TILE:
 					begin
 						memory_select = 2'd3;
 						copy_enable = 1;
-						draw_t = 1;
+						draw_tile = 1;
+						dc_enable = 1;
+					end
+					
+				DRAW_EXPLOSION:
+					begin
+						memory_select = 2'd3;
+						copy_enable = 1;
+						draw_explosion = 1;
+						dc_enable = 1;
 					end
 				UPDATE_TILE:
 					begin
 						tc_enable = 1;
+						dc_enable = 1;
 					end
+					
+				DRAW_BOMB:
+					begin
+						memory_select = 2'd3;
+						copy_enable = 1;
+						draw_bomb = 1;
+						dc_enable = 1;
+					end
+					
+				UPDATE_BOMB:
+					begin
+						bc_enable = 1;
+						dc_enable = 1;
+						cc_reset = 1;
+					end
+				
+				CHECK_P1_CORNER:
+					begin
+						dc_enable = 1;
+						check_p1 = 1;
+					end
+				
+				UPDATE_P1_CORNER:
+					begin
+						dc_enable = 1;
+						cc_enable = 1;
+					end
+					
 				DRAW_P1:
 					begin
 						memory_select = 2'd3;
 						copy_enable = 1;
 						draw_p1 = 1;
+						dc_enable = 1;
 					end
+					
+				DRAW_P1_HP:
+					begin
+						memory_select = 2'd3;
+						copy_enable = 1;
+						draw_p1_hp = 1;
+						dc_enable = 1;
+					end
+					
+				UPDATE_P1_HP:
+					begin
+						lc_p1_enable = 1;
+						dc_enable = 1;
+						cc_reset = 1;
+					end
+				
+				CHECK_P2_CORNER:
+					begin
+						dc_enable = 1;
+						check_p2 = 1;
+					end
+					
+				UPDATE_P2_CORNER:
+					begin
+						dc_enable = 1;
+						cc_enable = 1;
+					end
+					
 				DRAW_P2:
 					begin
 						memory_select = 2'd3;
 						copy_enable = 1;
 						draw_p2 = 1;
+						dc_enable = 1;
 					end
+					
+				DRAW_P2_HP:
+					begin
+						memory_select = 2'd3;
+						copy_enable = 1;
+						draw_p2_hp = 1;
+						dc_enable = 1;
+					end
+					
+				UPDATE_P2_HP:
+					begin
+						lc_p2_enable = 1;
+						dc_enable = 1;
+					end
+					
 				GAME_IDLE:
 					begin
 						dc_enable = 1;
 					end
+					
 				UPDATE_STAGE:
 					begin
 					end
+					
 				LOAD_WIN_SCREEN:
 					begin
 						memory_select = 2'd2;
 						copy_enable = 1;
 						draw_stage = 1;
 					end
+					
 				WIN_SCREEN:
 					begin
 					end
@@ -172,10 +347,12 @@ module delay_counter(clock_60Hz, clock, reset, enable);
 				count <= 20'd0;
 			// count to 833 333 - 1
 			else if (enable)
-				if (count == 20'd833332) 
-					count <= 20'd0;
-				else
-					count <= count + 20'd1;
+				begin
+					if (count == 20'd833332) 
+						count <= 20'd0;
+					else
+						count <= count + 20'd1;
+				end
 		end
 		
 	// sends high out signal ~60 times per second. 
@@ -196,18 +373,73 @@ module frame_counter(out, clock, reset, enable);
 	always @(posedge clock, posedge reset)
 		begin
 			if (reset)
-				begin
-					count <= 4'd0;
-				end
+				count <= 4'd0;
 			// count to 15 - 1
 			else if (enable)
-				if (count == 4'd14)
+				begin
+					if (count == 4'd14)
 						count <= 4'd0;
-				else
+					else
 						count <= count + 4'd1;
+				end
 		end
 	
 	// sends high out signal 1 time every 15 frames.
 	assign out = (count == 4'd0)? 1 : 0;
 
+endmodule
+
+// counter module for 6 bombs.
+// active high reset.
+module bomb_counter(count, out, clock, reset, enable);
+	
+	output reg [2:0] count;
+	
+	output out;
+		
+	input clock, reset, enable;
+	
+	always @ (posedge clock, posedge reset)
+		begin
+			if (reset)
+				count <= 3'd0;
+			else if (enable)
+				begin
+					if (count == 3'd5)
+						count <= 3'd0;
+					else
+						count <= count + 3'd1;
+				end
+		end
+		
+	assign out = (count == 3'd0) ? 1 : 0;
+	
+endmodule
+
+// counter module that counts to count_to.
+// active high reset.
+module counter(count, out, count_to, clock, reset, enable);
+	
+	output reg [1:0] count;
+	
+	output out;
+	
+	input [1:0] count_to;
+	input clock, reset, enable;
+	
+	always @ (posedge clock, posedge reset)
+		begin
+			if (reset)
+				count <= 2'd0;
+			else if (enable)
+				begin
+					if (count == count_to)
+						count <= 2'd0;
+					else
+						count <= count + 2'd1;
+				end
+		end
+	
+	assign out = (count == 2'd0) ? 1'd1 : 1'd0;
+	
 endmodule

@@ -1,38 +1,54 @@
+
+// module containing the datapath for bomberman.v
+
 module bomberman_datapath(
-	output [8:0] X_out, 
+	// signals to VGA.
+	output [8:0] X_out,
 	output [7:0] Y_out,
 	output [2:0] colour,
-	output finished, all_tiles_drawn, //game_over,
 	output write_en,
 	
-	input [1:0] memory_select,
+	// signals to control.
+	output reg [1:0] p1_lives, p2_lives,
+	output finished, all_tiles_drawn,
+	
+	// signals from control.
+	input [2:0] bomb_id,
+	input [1:0] memory_select, p1_hp_id, p2_hp_id, corner_id,
 	input copy_enable, tc_enable,
-	input player_reset, stage_reset,
-	input draw_stage, draw_t, draw_p1, draw_p2, refresh,
+	input player_reset, tile_reset,
+	input draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
+	input refresh,
+	
+	// signals from keyboard.
 	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
 	input p2_bomb, p2_xdir, p2_xmov, p2_ydir, p2_ymov,
+	
 	input clock, reset
 	); 
 	
-	reg [8:0] X, Y;
-	wire [16:0] offset;
+	reg [17:0] bomb_info;
+	reg [8:0] copy_X, copy_Y, bomb_X, bomb_Y;
+	reg [3:0] tile_select, p1_is_empty, p2_is_empty;
+	reg p1_x_enable, p1_y_enable, p2_x_enable, p2_y_enable, p1_ic_start, p2_ic_start;
+	
 	wire [8:0] p1_X, p1_Y, p2_X, p2_Y;
 	wire [4:0] p1_speed, p2_speed;
+	wire [1:0] p1_length, p2_length;
+	wire p1_is_invincible, p2_is_invincible, has_explosion;
 	
 	assign p1_speed = 5'd2; // for now set 'speed' of sprite to be 8 pixels moved per second
 	assign p2_speed = 5'd2;
 	
-	// load game_stage map from .mem file into memory.
-	reg [3:0] game_stage_initial [0:120];
-//	// for use in game.
-//	reg [3:0] game_stage_current [0:120];
-	initial $readmemh("game_stage_1.mem", game_stage_initial);
+	assign p1_length = 2'd2; // for now set invincibility length to 2 seconds.
+	assign p2_length = 2'd2;
 	
-	wire [3:0] tile_count_x, tile_count_y;
+	wire [3:0] map_tile_id, tile_count_x, tile_count_y;
 	wire all_tiles_counted_x, all_tiles_counted_y;
 	assign all_tiles_drawn = (all_tiles_counted_x & all_tiles_counted_y);
 	
-	// need to slow this down possibly send signal from control module during respective states.
+	// P1
+
 	coordinate_counter player_1_X(
 		.next_coord(p1_X),
 		.start_coord(9'd72),
@@ -41,21 +57,35 @@ module bomberman_datapath(
 		.increment(p1_speed),
 		.clock(refresh),
 		.reset(player_reset),
-		.enable(p1_xmov),
+		.enable(p1_x_enable),
 		.direction(p1_xdir)
 		);
 		
 	coordinate_counter player_1_Y(
 		.next_coord(p1_Y),
-		.start_coord(9'd96),
+		.start_coord(9'd112),
 		.min_coord(9'd32),
 		.max_coord(9'd192),
 		.increment(p1_speed),
 		.clock(refresh),
 		.reset(player_reset),
-		.enable(p2_ymov),
+		.enable(p1_y_enable),
 		.direction(p1_ydir)
 		);
+		
+//	coordinate_counter player_1_hp_X(
+//		.next_coord(p1_hp_X),
+//		.start_coord(9'd8),
+//		.min_coord(9'd0),
+//		.max_coord(9'd48),
+//		.increment(9'd20),
+//		.clock(clock),
+//		.reset(p_hpcc_reset),
+//		.enable(P1_hpcc_enable),
+//		.direction(1)
+//		);
+
+	// P2
 		
 	coordinate_counter player_2_X(
 		.next_coord(p2_X),
@@ -65,22 +95,34 @@ module bomberman_datapath(
 		.increment(p2_speed),
 		.clock(refresh),
 		.reset(player_reset),
-		.enable(p2_xmov),
+		.enable(p2_x_enable),
 		.direction(p2_xdir)
 		);
 		
 	coordinate_counter player_2_Y(
 		.next_coord(p2_Y),
-		.start_coord(9'd96),
+		.start_coord(9'd112),
 		.min_coord(9'd32),
 		.max_coord(9'd192),
 		.increment(p2_speed),
 		.clock(refresh),
 		.reset(player_reset),
-		.enable(p2_ymov),
+		.enable(p2_y_enable),
 		.direction(p2_ydir)
 		);
 		
+//	coordinate_counter player_2_hp_X(
+//		.next_coord(p2_hp_X),
+//		.start_coord(9'd256),
+//		.min_coord(9'd248),
+//		.max_coord(9'd296),
+//		.increment(9'd20),
+//		.clock(clock),
+//		.reset(p_hpcc_reset),
+//		.enable(P2_hpcc_enable),
+//		.direction(1)
+//		);
+	
 	tile_counter tc_x(
 		.tile_count(tile_count_x),
 		.all_tiles_counted(all_tiles_counted_x),
@@ -96,65 +138,287 @@ module bomberman_datapath(
 		.reset(reset),
 		.enable(all_tiles_counted_x)
 		);
+		
+	invincibility_counter ic_p1(
+		.is_invincible(p1_is_invincible),
+		.length(p1_length),
+		.clock(clock),
+		.reset(reset),
+		.start(p1_ic_start)
+		);
+	
+	invincibility_counter ic_p2(
+		.is_invincible(p2_is_invincible),
+		.length(p2_length),
+		.clock(clock),
+		.reset(reset),
+		.start(p2_ic_start)
+		);	
+	
+	bomb b0(
+		.clk(clock),
+		.reset(reset),
+		.tile_reset(tile_reset),
+		.X(bomb_X),
+		.Y(bomb_Y),
+		.statsP1(statsP1),
+		.statsP2(statsP2),
+		.placeP1(p1_bomb),
+		.placeP2(p2_bomb),
+		.bomb_id(bomb_id),
+		.bomb_info(bomb_info),
+		.has_explosion(has_explosion),
+		.map_tile_id(map_tile_id)
+		);
 	
 	copy c0(
 		.clk(clock),
 		.reset_n(reset),
 		.go(copy_enable),
+		.refresh(),
+		.X(copy_X),
+		.Y(copy_Y),
 		.memory_select(memory_select),
-		.tile_select((game_stage_initial [((tile_count_y * 11) + tile_count_x)])),
+		.tile_select(tile_select),
+		.X_out(X_out),
+		.Y_out(Y_out),
 		.colour(colour),
-		.offset(offset),
 		.write_en(write_en),
 		.finished(finished)
 		);
 	
-	// input and direction registers and their respective logic.
+	// player coordinate logic.
 	always @ (posedge clock, posedge reset)
 		begin
 			if (reset)
 				begin
-					X <= 9'd0;
-					Y <= 8'd0;
+					p1_x_enable <= 0;
+					p1_y_enable <= 0;
+					p2_x_enable <= 0;
+					p2_y_enable <= 0;
+				end
+			else
+				begin
+					if (p1_xdir)
+						p1_x_enable <= (p1_is_empty[1] & p1_is_empty[3] & p1_xmov) ? 1 : 0;
+					else if (!p1_xdir)
+						p1_x_enable <= (p1_is_empty[0] & p1_is_empty[2] & p1_xmov) ? 1 : 0;
+					else if (p1_ydir)
+						p1_y_enable <= (p1_is_empty[2] & p1_is_empty[3] & p1_ymov) ? 1 : 0;
+					else if (!p1_ydir)
+						p1_y_enable <= (p1_is_empty[0] & p1_is_empty[1] & p1_ymov) ? 1 : 0;
+					if (p2_xdir)
+						p2_x_enable <= (p2_is_empty[1] & p2_is_empty[3] & p2_xmov) ? 1 : 0;
+					else if (!p2_xdir)
+						p2_x_enable <= (p2_is_empty[0] & p2_is_empty[2] & p2_xmov) ? 1 : 0;
+					else if (p2_ydir)
+						p2_y_enable <= (p2_is_empty[2] & p2_is_empty[3] & p2_ymov) ? 1 : 0;
+					else if (!p2_ydir)
+						p2_y_enable <= (p2_is_empty[0] & p2_is_empty[1] & p2_ymov) ? 1 : 0;
+				end
+		end
+			
+	// player health and bomb_XY logic.
+	always @ (posedge clock, posedge reset, posedge player_reset)
+		begin
+			if (reset)
+				begin
+					bomb_X <= 9'd0;
+					bomb_Y <= 8'd0;
+					p1_lives <= 2'd3;
+					p2_lives <= 2'd3;
+					p1_is_empty <= 4'd0;
+					p1_ic_start <= 0;
+					p2_ic_start <= 0;
+				end
+			else if (player_reset)
+				begin
+					p1_lives <= 2'd3;
+					p2_lives <= 2'd3;
+				end
+			else if (check_p1)
+				begin
+					case (corner_id)
+						2'd0: // top left corner.
+							begin
+								bomb_X <= p1_X;
+								bomb_Y <= p1_Y;
+								if (has_explosion & !p1_is_invincible)
+									begin
+										p1_lives <= p1_lives - 1;
+										p1_ic_start <= 1;
+									end
+								p1_is_empty [0] <= (map_tile_id == 4'd0) ? 1 : 0;
+							end
+						2'd1: // top right corner.
+							begin
+								bomb_X <= p1_X + 9'd15;
+								bomb_Y <= p1_Y;
+								if (has_explosion & !p1_is_invincible)
+									begin
+										p1_lives <= p1_lives - 1;
+										p1_ic_start <= 1;
+									end
+								p1_is_empty [1] <= (map_tile_id == 4'd0) ? 1 : 0;
+							end
+						2'd2: // bottom left corner.
+							begin
+								bomb_X <= p1_X;
+								bomb_Y <= p1_Y + 8'd15;
+								if (has_explosion & !p1_is_invincible)
+									begin
+										p1_lives <= p1_lives - 1;
+										p1_ic_start <= 1;
+									end
+								p1_is_empty [2] <= (map_tile_id == 4'd0) ? 1 : 0;
+							end
+						2'd3: // bottom right corner.
+							begin
+								bomb_X <= p1_X + 9'd15;
+								bomb_Y <= p1_Y + 8'd15;
+								if (has_explosion & !p1_is_invincible)
+									begin
+										p1_lives <= p1_lives - 1;
+										p1_ic_start <= 1;
+									end
+								p1_is_empty [3] <= (map_tile_id == 4'd0) ? 1 : 0;
+							end				
+					endcase
+				end
+			else if (check_p2)
+				begin
+					case (corner_id)
+						2'd0: // top left corner.
+							begin
+								bomb_X <= p2_X;
+								bomb_Y <= p2_Y;
+								if (has_explosion & !p2_is_invincible)
+									begin
+										p2_lives <= p2_lives - 1;
+										p2_ic_start <= 1;
+									end
+								p2_is_empty [0] <= (map_tile_id == 4'd0) ? 1 : 0;
+							end
+						2'd1: // top right corner.
+							begin
+								bomb_X <= p2_X + 9'd15;
+								bomb_Y <= p2_Y;
+								if (has_explosion & !p2_is_invincible)
+									begin
+										p2_lives <= p2_lives - 1;
+										p2_ic_start <= 1;
+									end
+								p2_is_empty [1] <= (map_tile_id == 4'd0) ? 1 : 0;
+							end
+						2'd2: // bottom left corner.
+							begin
+								bomb_X <= p2_X;
+								bomb_Y <= p2_Y + 8'd15;
+								if (has_explosion & !p2_is_invincible)
+									begin
+										p2_lives <= p2_lives - 1;
+										p2_ic_start <= 1;
+									end
+								p2_is_empty [2] <= (map_tile_id == 4'd0) ? 1 : 0;
+							end
+						2'd3: // bottom right corner.
+							begin
+								bomb_X <= p2_X + 9'd15;
+								bomb_Y <= p2_Y + 8'd15;
+								if (has_explosion & !p2_is_invincible)
+									begin
+										p2_lives <= p2_lives - 1;
+										p2_ic_start <= 1;
+									end
+								p2_is_empty [3] <= (map_tile_id == 4'd0) ? 1 : 0;
+							end				
+					endcase
+				end
+			else if (p1_bomb)
+				begin
+					bomb_X <= p1_X;
+					bomb_Y <= p1_Y;
+				end
+			else if (p2_bomb)
+				begin
+					bomb_X <= p2_X;
+					bomb_Y <= p2_Y;
+				end
+			else if (p1_ic_start)
+				begin
+					p1_ic_start <= 0;
+				end
+			else if (p2_ic_start)
+				begin
+					p2_ic_start <= 0;
+				end
+		end
+		
+	// copy_XY logic.
+	always @ (posedge clock, posedge reset)
+		begin
+			if (reset)
+				begin
+					copy_X <= 9'd0;
+					copy_Y <= 8'd0;
+					tile_select <= 4'd0;
 				end
 			else
 				begin
 					if (draw_stage)
 						begin
-							X <= 9'd0;
-							Y <= 8'd0;
+							copy_X <= 9'd0;
+							copy_Y <= 8'd0;
+							tile_select <= 4'd0;
 						end
-					if (draw_t)
+					if (draw_tile)
 						begin
-							X <= 9'd72 + {1'b0, tile_count_x, 4'b0000};
-							Y <= 8'd32 + {tile_count_y, 4'b0000};
+							copy_X <= 9'd72 + {1'b0, tile_count_x, 4'b0000}; // multiply tile_count_x by 16
+							copy_Y <= 8'd32 + {tile_count_y, 4'b0000};		 // multiply tile_count_y by 16
+							tile_select <= map_tile_id;
+						end
+					if (draw_explosion)
+						begin
+							copy_X <= 9'd72 + {1'b0, tile_count_x, 4'b0000}; // multiply tile_count_x by 16
+							copy_Y <= 8'd32 + {tile_count_y, 4'b0000};		 // multiply tile_count_y by 16
+							tile_select <= has_explosion ? 4'd11 : map_tile_id;
+						end
+					if (draw_bomb)
+						begin
+							if (bomb_info [0])
+								begin
+									copy_X <= bomb_info [9:1];
+									copy_Y <= bomb_info [17:10];
+									tile_select <= 4'd10;
+								end
 						end
 					if (draw_p1)
 						begin
-							X <= p1_X;
-							Y <= p1_Y [7:0];
+							copy_X <= p1_X;
+							copy_Y <= p1_Y [7:0];
+							tile_select <= p1_is_invincible ? 4'd14 : 4'd12;
+						end
+					if (draw_p1_hp)
+						begin
+							copy_X <= 9'd8 + (9'd20 * p1_hp_id);
+							copy_Y <= 8'd112;
+							tile_select <= 4'd9;
 						end
 					if (draw_p2)
 						begin
-							X <= p2_X;
-							Y <= p2_Y [7:0];
+							copy_X <= p2_X;
+							copy_Y <= p2_Y [7:0];
+							tile_select <= p2_is_invincible ? 4'd14 : 4'd12;
+						end
+					if (draw_p2_hp)
+						begin
+							copy_X <= 9'd256 + (9'd20 * p1_hp_id);
+							copy_Y <= 8'd112;
+							tile_select <= 4'd9;
 						end
 				end
 		end
 		
-	always @ (*)
-		begin
-			if (reset)
-				begin
-					X_out <= 9'd0;
-					Y_out <= 8'd60;
-				end
-			else if (draw_stage | draw_t | draw_p1 | draw_p2) 
-				begin
-					X_out <= X + offset[8:0];
-					Y_out <= Y + offset[16:9];
-				end
-		end
 endmodule
 
 // counter module for X/Y coordinate given start_coord, min_coord, max_coord, direction and increment.
@@ -193,6 +457,28 @@ module coordinate_counter(
 		
 endmodule
 
+//// counter module for lives.
+//// active high reset.
+//module lives_counter(has_died, lives, clock, reset, enable);
+//	
+//	output out;
+//	
+//	input [1:0] lives;
+//	input clock, reset, enable;
+//	
+//	always @(posedge clock, posedge reset)
+//		begin
+//			if (reset)
+//				lives <= 2'd3;
+//			else if (enable)
+//				begin
+//					
+//				end
+//		end
+//	
+//	assign has_died = (lives == 2'd0) ? 1 : 0;
+//	
+//endmodule				
 
 // counter module for cycling through game stage memory file.
 // active-high reset.
@@ -218,5 +504,46 @@ module tile_counter(tile_count, all_tiles_counted, clock, reset, enable);
 		end
 	
 	assign all_tiles_counted = (tile_count == 0) ? 1'd1 : 1'd0;
+		
+endmodule
+
+// counter module for specified length (in seconds)[max 3s] of time.
+// active-high reset.
+module invincibility(is_invincible, length, clock, reset, start);
+	
+	output is_invincible;
+	
+	input [1:0] length;
+	input clock, reset, start;
+	
+	reg [51:0] count;
+	reg enable;
+
+	always @(posedge clock, posedge reset)
+		begin
+			if (reset)
+				begin
+					enable <= 0;
+					count <= 52'd0;
+				end
+			// count to 50m * length
+			else if (start)
+				begin
+					enable <= 1;
+				end
+			else if (count == 52'd0)
+				begin
+					enable <= 0;
+				end
+			else if (enable)
+				begin
+					if (count == (52'd50000000 * length - 1))
+						count <= 52'd0;
+					else
+						count <= count + 52'd1;
+				end
+		end
+	
+	assign is_invincible = (count == 0) ? 0 : 1;
 		
 endmodule
