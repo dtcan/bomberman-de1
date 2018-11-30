@@ -19,13 +19,12 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 	wire [7:0] offset_y;
 	wire [7:0] offset_t;
 	reg [16:0] offset;
-	reg enable_count;
+	reg enable_count, write_buffer;
 	reg [16:0] adr;
 	reg refreshing;
 	
 	assign X_out = offset_x;
 	assign Y_out = offset_y;
-	assign colour = buffer[(Y_out * WIDTH) + X_out];
 	
 	count8 c0(
 		.clk(clk),
@@ -58,6 +57,24 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 		else
 			offset = {offset_y, offset_x};
 	end
+	
+	altsyncram	Buffer (
+				.wren_a (write_buffer),
+				.clock0 (clk), // read clock
+				.clocken0 (1'b1), // read enable clock
+				.address_a (adr),
+				.data_a (colour_b)	// data in
+				.q_a (colour)		// data out
+				);
+	defparam
+		TitleScreen.WIDTH_A = BITS_PER_COLOUR * 3,
+		TitleScreen.INTENDED_DEVICE_FAMILY = "Cyclone II",
+		TitleScreen.OPERATION_MODE = "SINGLE_PORT",
+		TitleScreen.WIDTHAD_A = 17,
+		TitleScreen.NUMWORDS_A = WIDTH * HEIGHT,
+		TitleScreen.CLOCK_ENABLE_INPUT_A = "BYPASS",
+		TitleScreen.POWER_UP_UNINITIALIZED = "FALSE",
+		TitleScreen.INIT_FILE = "title.mif";
 	
 	altsyncram	TitleScreen (
 				.wren_a (1'b0),
@@ -167,11 +184,13 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 	begin
 		enable_count = 0;
 		write_en = 0;
+		write_buffer = 0;
 		finished = 0;
 		case(Q)
 			S_DRAW: write_en = 1;
 			S_INCREMENT: enable_count = 1;
 			S_FINISH: finished = 1;
+			S_DRAW_BUFFER: write_buffer = (colour_b != 6'b001100); // Change this when changing bits per colour
 		endcase
 	end
 	
@@ -185,15 +204,10 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 			end
 			S_SELECT:
 			begin
-				if(memory_select == 2'b11)
+				if((memory_select == 2'b11) & ~refreshing)
 					adr <= ({tile_select[3:2], offset_t[7:4]} * 64) + {tile_select[1:0], offset_t[3:0]};
 				else
 					adr <= (offset_y * WIDTH) + offset_x;
-			end
-			S_DRAW_BUFFER:
-			begin
-				if(colour != 6'b001100) // !!!!! Change when changing colour width
-					buffer[((Y + offset[16:9]) * WIDTH) + X + offset[8:0]] <= colour_b;
 			end
 			S_ENABLE_REFRESH: refreshing <= 1;
 		endcase
