@@ -12,7 +12,6 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 	localparam WIDTH = 320, HEIGHT = 240; // Still have to go change bit-widths when changing these!
 	localparam BITS_PER_COLOUR = 2;       // When changing, also change colour reg and wire widths
 	
-	reg [5:0] buffer [0:(WIDTH * HEIGHT) - 1];
 	reg [5:0] colour_b;
 	wire [5:0] colour_1, colour_2, colour_3, colour_t;
 	wire [8:0] offset_x;
@@ -63,18 +62,18 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 				.clock0 (clk), // read clock
 				.clocken0 (1'b1), // read enable clock
 				.address_a (adr),
-				.data_a (colour_b)	// data in
+				.data_a (colour_b),	// data in
 				.q_a (colour)		// data out
 				);
 	defparam
-		TitleScreen.WIDTH_A = BITS_PER_COLOUR * 3,
-		TitleScreen.INTENDED_DEVICE_FAMILY = "Cyclone II",
-		TitleScreen.OPERATION_MODE = "SINGLE_PORT",
-		TitleScreen.WIDTHAD_A = 17,
-		TitleScreen.NUMWORDS_A = WIDTH * HEIGHT,
-		TitleScreen.CLOCK_ENABLE_INPUT_A = "BYPASS",
-		TitleScreen.POWER_UP_UNINITIALIZED = "FALSE",
-		TitleScreen.INIT_FILE = "title.mif";
+		Buffer.WIDTH_A = BITS_PER_COLOUR * 3,
+		Buffer.INTENDED_DEVICE_FAMILY = "Cyclone II",
+		Buffer.OPERATION_MODE = "SINGLE_PORT",
+		Buffer.WIDTHAD_A = 17,
+		Buffer.NUMWORDS_A = WIDTH * HEIGHT,
+		Buffer.CLOCK_ENABLE_INPUT_A = "BYPASS",
+		Buffer.POWER_UP_UNINITIALIZED = "FALSE",
+		Buffer.INIT_FILE = "title.mif";
 	
 	altsyncram	TitleScreen (
 				.wren_a (1'b0),
