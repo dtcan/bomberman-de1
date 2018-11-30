@@ -18,7 +18,7 @@ module bomberman_control(
 	);
 	
 	// internal registers and wires.
-	reg [3:0] current_state, next_state;
+	reg [4:0] current_state, next_state;
 	reg dc_reset, dc_enable; 						// for delay counter
 	reg bc_reset, bc_enable; 						// for bomb counter
 	reg lc_reset, lc_p1_enable, lc_p2_enable; // for lives counter
@@ -30,7 +30,7 @@ module bomberman_control(
 	wire game_over;
 	
 	// game_over condition.
-	assign game_over = ((p1_lives == 2'd0) | (p2_lives == 2'd0)) ? 1 : 0; 
+	assign game_over = ((p1_lives == 2'd0) | (p2_lives == 2'd0)) ? 1'd1 : 1'd0; 
 	
 	delay_counter dc(
 		.clock_60Hz(clock_60Hz),
@@ -138,6 +138,8 @@ module bomberman_control(
 							next_state = LOAD_WIN_SCREEN;
 						else if (!game_over & finished)
 							next_state = DRAW_TILE;
+						else
+							next_state = UPDATE_STAGE;
 					end
 				LOAD_WIN_SCREEN:	next_state = finished			? WIN_SCREEN : LOAD_WIN_SCREEN;// loop in LOAD_WIN_SCREEN until finished drawing win screen background.
 				WIN_SCREEN:			next_state = go					? LOAD_TITLE : WIN_SCREEN;		 // loop in WIN_SCREEN until user inputs to return to title.
