@@ -242,7 +242,7 @@ module bomberman_datapath(
 						2'd0: // top left corner.
 							begin
 								bomb_X <= p1_X;
-								bomb_Y <= p1_Y;
+								bomb_Y <= p1_Y [7:0];
 								if (has_explosion & !p1_is_invincible)
 									begin
 										p1_lives <= p1_lives - 1'd1;
@@ -253,7 +253,7 @@ module bomberman_datapath(
 						2'd1: // top right corner.
 							begin
 								bomb_X <= p1_X + 9'd15;
-								bomb_Y <= p1_Y;
+								bomb_Y <= p1_Y [7:0];
 								if (has_explosion & !p1_is_invincible)
 									begin
 										p1_lives <= p1_lives - 1'd1;
@@ -264,7 +264,7 @@ module bomberman_datapath(
 						2'd2: // bottom left corner.
 							begin
 								bomb_X <= p1_X;
-								bomb_Y <= p1_Y + 8'd15;
+								bomb_Y <= p1_Y [7:0] + 8'd15;
 								if (has_explosion & !p1_is_invincible)
 									begin
 										p1_lives <= p1_lives - 1'd1;
@@ -275,7 +275,7 @@ module bomberman_datapath(
 						2'd3: // bottom right corner.
 							begin
 								bomb_X <= p1_X + 9'd15;
-								bomb_Y <= p1_Y + 8'd15;
+								bomb_Y <= p1_Y [7:0] + 8'd15;
 								if (has_explosion & !p1_is_invincible)
 									begin
 										p1_lives <= p1_lives - 1'd1;
@@ -291,7 +291,7 @@ module bomberman_datapath(
 						2'd0: // top left corner.
 							begin
 								bomb_X <= p2_X;
-								bomb_Y <= p2_Y;
+								bomb_Y <= p2_Y [7:0];
 								if (has_explosion & !p2_is_invincible)
 									begin
 										p2_lives <= p2_lives - 1'd1;
@@ -302,7 +302,7 @@ module bomberman_datapath(
 						2'd1: // top right corner.
 							begin
 								bomb_X <= p2_X + 9'd15;
-								bomb_Y <= p2_Y;
+								bomb_Y <= p2_Y [7:0];
 								if (has_explosion & !p2_is_invincible)
 									begin
 										p2_lives <= p2_lives - 1'd1;
@@ -313,7 +313,7 @@ module bomberman_datapath(
 						2'd2: // bottom left corner.
 							begin
 								bomb_X <= p2_X;
-								bomb_Y <= p2_Y + 8'd15;
+								bomb_Y <= p2_Y [7:0] + 8'd15;
 								if (has_explosion & !p2_is_invincible)
 									begin
 										p2_lives <= p2_lives - 1'd1;
@@ -324,7 +324,7 @@ module bomberman_datapath(
 						2'd3: // bottom right corner.
 							begin
 								bomb_X <= p2_X + 9'd15;
-								bomb_Y <= p2_Y + 8'd15;
+								bomb_Y <= p2_Y [7:0] + 8'd15;
 								if (has_explosion & !p2_is_invincible)
 									begin
 										p2_lives <= p2_lives - 1'd1;
@@ -337,12 +337,12 @@ module bomberman_datapath(
 			else if (p1_bomb)
 				begin
 					bomb_X <= p1_X;
-					bomb_Y <= p1_Y;
+					bomb_Y <= p1_Y [7:0];
 				end
 			else if (p2_bomb)
 				begin
 					bomb_X <= p2_X;
-					bomb_Y <= p2_Y;
+					bomb_Y <= p2_Y [7:0];
 				end
 			else if (p1_ic_start)
 				begin
