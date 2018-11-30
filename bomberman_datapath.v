@@ -27,11 +27,11 @@ module bomberman_datapath(
 	input clock, reset
 	); 
 	
-	reg [17:0] bomb_info;
 	reg [8:0] copy_X, copy_Y, bomb_X, bomb_Y;
 	reg [3:0] tile_select, p1_is_empty, p2_is_empty;
 	reg p1_x_enable, p1_y_enable, p2_x_enable, p2_y_enable, p1_ic_start, p2_ic_start;
 	
+	wire [17:0] bomb_info;
 	wire [8:0] p1_X, p1_Y, p2_X, p2_Y;
 	wire [4:0] p1_speed, p2_speed;
 	wire [1:0] p1_length, p2_length;
@@ -544,6 +544,6 @@ module invincibility_counter(is_invincible, length, clock, reset, start);
 				end
 		end
 	
-	assign is_invincible = (count == 0) ? 0 : 1;
+	assign is_invincible = (count == 52'd0) ? 1'd0 : 1'd1;
 		
 endmodule
