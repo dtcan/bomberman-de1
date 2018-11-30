@@ -500,7 +500,7 @@ module tile_counter(tile_count, all_tiles_counted, clock, reset, enable);
 				if (tile_count == 4'd10)
 						tile_count <= 0;
 				else
-						tile_count <= tile_count + 1;
+						tile_count <= tile_count + 4'd1;
 		end
 	
 	assign all_tiles_counted = (tile_count == 0) ? 1'd1 : 1'd0;

@@ -83,39 +83,44 @@ module bomberman_control(
 		);
 		
 	// declare states``
-	localparam	LOAD_TITLE			= 5'd0,	// draw title screen background.
-					TITLE					= 5'd1,	// wait for user input to start game.
-					LOAD_STAGE 			= 5'd2,	// draw stage screen background.
+	localparam	LOAD_TITLE			= 5'd0,	// draw title screen background to buffer.
+					DISPLAY_TITLE		= 5'd1,	// draw title screen background to VGA.
+					TITLE					= 5'd2,	// wait for user input to start game.
+					LOAD_STAGE 			= 5'd3,	// draw stage screen background to buffer.
+					DISPLAY_STAGE		= 5'd4,	// draw stage screen background to VGA.
 	
 					// states for drawing game stage tiles and sprites.
-					DRAW_TILE			= 5'd3,	// draw stage tile.
-					DRAW_EXPLOSION		= 5'd4, 	// draw explosion (if it exists) on stage tile.
-					UPDATE_TILE			= 5'd5,	// update tile counter.
-					DRAW_BOMB			= 5'd6,	// draw bomb tiles.
-					UPDATE_BOMB			= 5'd7,  // update bomb counter.
-					CHECK_P1_CORNER	= 5'd8,  // check tile of corner pixel.
-					UPDATE_P1_CORNER	= 5'd9,  // update corner pixel.
-					DRAW_P1				= 5'd10,	// draw player 1's sprite.
-					DRAW_P1_HP		 	= 5'd11, // draw player 1's health.
-					UPDATE_P1_HP		= 5'd12, // update player 1's health.
-					CHECK_P2_CORNER	= 5'd13, // check tile of corner pixel.
-					UPDATE_P2_CORNER	= 5'd14, // update corner pixel.
-					DRAW_P2				= 5'd15, // draw player 2's sprite.
-					DRAW_P2_HP			= 5'd16, // draw player 2's health.
-					UPDATE_P2_HP		= 5'd17,	// update player 2's health.
-					GAME_IDLE			= 5'd18,	// wait for delay.
-					UPDATE_STAGE		= 5'd19,	// update memory file.
+					DRAW_TILE			 = 5'd5,	// draw stage tile.
+					DRAW_EXPLOSION		 = 5'd6, // draw explosion (if it exists) on stage tile.
+					UPDATE_TILE			 = 5'd7,	// update tile counter.
+					DRAW_BOMB			 = 5'd8,	// draw bomb tiles.
+					UPDATE_BOMB			 = 5'd9, // update bomb counter.
+					CHECK_P1_CORNER	 = 5'd10,// check tile of corner pixel.
+					UPDATE_P1_CORNER	 = 5'd11,// update corner pixel.
+					DRAW_P1				 = 5'd12,// draw player 1's sprite.
+					DRAW_P1_HP		 	 = 5'd13,// draw player 1's health.
+					UPDATE_P1_HP		 = 5'd14,// update player 1's health.
+					CHECK_P2_CORNER	 = 5'd15,// check tile of corner pixel.
+					UPDATE_P2_CORNER	 = 5'd16,// update corner pixel.
+					DRAW_P2				 = 5'd17,// draw player 2's sprite.
+					DRAW_P2_HP			 = 5'd18,// draw player 2's health.
+					UPDATE_P2_HP		 = 5'd19,// update player 2's health.
+					GAME_IDLE			 = 5'd20,// wait for delay.
+					UPDATE_STAGE		 = 5'd21,// draw stage to VGA.
 					
-					LOAD_WIN_SCREEN	= 5'd20,	// draw win screen background.
-					WIN_SCREEN			= 5'd21;	// wait for user input to return to title screen.
+					LOAD_WIN_SCREEN	 = 5'd22,// draw win screen background to buffer.
+					DISPLAY_WIN_SCREEN = 5'd23,// draw win screen background to VGA.
+					WIN_SCREEN			 = 5'd24;// wait for user input to return to title screen.
 
 	// state table
 	always @ (*)
 		begin: state_table
 			case (current_state)
-				LOAD_TITLE: 		next_state = finished 			? TITLE : LOAD_TITLE; 			 // loop in LOAD_TITLE until finished drawing title background.
+				LOAD_TITLE: 		next_state = finished 			? DISPLAY_TITLE : LOAD_TITLE;  // loop in LOAD_TITLE until finished drawing title background.
+				DISPLAY_TITLE:		next_state = finished			? TITLE : DISPLAY_TITLE;		 //
 				TITLE:				next_state = go					? LOAD_STAGE : TITLE;			 // loop in TITLE until user inputs to start game.
-				LOAD_STAGE:			next_state = finished			? DRAW_TILE : LOAD_STAGE;		 // loop in LOAD_STAGE until finished drawing stage background.
+				LOAD_STAGE:			next_state = finished			? DISPLAY_STAGE : LOAD_STAGE;	 // loop in LOAD_STAGE until finished drawing stage background.
+				DISPLAY_STAGE: 	next_state = finished			? DRAW_TILE : DISPLAY_STAGE;
 				DRAW_TILE:			next_state = finished 			? DRAW_EXPLOSION : DRAW_TILE;	 // loop in DRAW_TILE until finished drawing stage tile.
 				DRAW_EXPLOSION:	next_state = finished			? UPDATE_TILE : DRAW_EXPLOSION;// loop in DRAW_EXPLOSION until finished drawing explosion on stage tile.
 				UPDATE_TILE:		next_state = all_tiles_drawn	? DRAW_BOMB : DRAW_TILE;		 // loop back to DRAW_TILE until finished drawing all tiles.
@@ -141,7 +146,8 @@ module bomberman_control(
 						else
 							next_state = UPDATE_STAGE;
 					end
-				LOAD_WIN_SCREEN:	next_state = finished			? WIN_SCREEN : LOAD_WIN_SCREEN;// loop in LOAD_WIN_SCREEN until finished drawing win screen background.
+				LOAD_WIN_SCREEN:	next_state = finished			? DISPLAY_WIN_SCREEN : LOAD_WIN_SCREEN;// loop in LOAD_WIN_SCREEN until finished drawing win screen background.
+				DISPLAY_WIN_SCREEN: next_state = finished			? WIN_SCREEN : DISPLAY_WIN_SCREEN; 
 				WIN_SCREEN:			next_state = go					? LOAD_TITLE : WIN_SCREEN;		 // loop in WIN_SCREEN until user inputs to return to title.
 				default: next_state = LOAD_TITLE;
 			endcase
@@ -188,6 +194,11 @@ module bomberman_control(
 						draw_stage = 1;
 					end
 					
+				DISPLAY_TITLE:
+					begin
+						print_screen = 1;
+					end
+					
 				TITLE:
 					begin
 					end
@@ -197,11 +208,16 @@ module bomberman_control(
 						memory_select = 2'd1;
 						copy_enable = 1;
 						draw_stage = 1;
+					end
+				
+				DISPLAY_STAGE:
+					begin
 						player_reset = 1;
 						tile_reset = 1;						
 						dc_reset = 1;
 						bc_reset = 1;
 						lc_reset = 1;
+						print_screen = 1;
 					end
 					
 				DRAW_TILE:
@@ -324,6 +340,11 @@ module bomberman_control(
 						memory_select = 2'd2;
 						copy_enable = 1;
 						draw_stage = 1;
+					end
+					
+				DISPLAY_WIN_SCREEN:
+					begin
+						print_screen = 1;
 					end
 					
 				WIN_SCREEN:
