@@ -12,30 +12,31 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 	localparam WIDTH = 320, HEIGHT = 240; // Still have to go change bit-widths when changing these!
 	localparam BITS_PER_COLOUR = 2;       // When changing, also change colour reg and wire widths
 	
-	reg [5:0] colour_b;
+	// reg [5:0] colour_b;
 	wire [5:0] colour_1, colour_2, colour_3, colour_t;
 	wire [8:0] offset_x;
 	wire [7:0] offset_y;
 	wire [7:0] offset_t;
 	reg [16:0] offset;
-	reg enable_count, write_buffer;
+	reg enable_count;
+	// reg write_buffer;
 	reg [16:0] adr;
-	reg refreshing;
+	// reg refreshing;
 	
-	assign X_out = offset_x;
-	assign Y_out = offset_y;
+	assign X_out = X + offset[8:0];
+	assign Y_out = Y + offset[16:9];
 	
 	count8 c0(
 		.clk(clk),
 		.reset_n(reset_n),
-		.enable(enable_count & (memory_select == 2'b11)),
+		.enable(enable_count & (memory_select == 2'b11)), // If using buffer, check refreshing signal
 		.q(offset_t)
 	);
 	
 	count_xy c1(
 		.clk(clk),
 		.reset_n(reset_n),
-		.enable(enable_count & ((memory_select != 2'b11) | refreshing)),
+		.enable(enable_count & (memory_select != 2'b11)), // If using buffer, check refreshing
 		.max_x(WIDTH),
 		.max_y(HEIGHT),
 		.q_x(offset_x),
@@ -44,19 +45,20 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 	
 	always @(*)
 	begin
-		case(memory_select)
-			2'b00: colour_b = colour_1;
-			2'b01: colour_b = colour_2;
-			2'b10: colour_b = colour_3;
-			2'b11: colour_b = colour_t;
+		case(memory_select) // Assign values to colour_b when using buffer
+			2'b00: colour = colour_1;
+			2'b01: colour = colour_2;
+			2'b10: colour = colour_3;
+			2'b11: colour = colour_t;
 		endcase
 		
-		if((memory_select == 2'b11) & ~refreshing)
+		if(memory_select == 2'b11) // Check refreshing if using buffer
 			offset = {4'd0, offset_t[7:4], 5'd0, offset_t[3:0]};
 		else
 			offset = {offset_y, offset_x};
 	end
 	
+	/*
 	altsyncram	Buffer (
 				.wren_a (write_buffer),
 				.clock0 (clk), // read clock
@@ -74,7 +76,7 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 		Buffer.CLOCK_ENABLE_INPUT_A = "BYPASS",
 		Buffer.POWER_UP_UNINITIALIZED = "FALSE",
 		Buffer.INIT_FILE = "title.mif";
-	
+	*/
 	altsyncram	TitleScreen (
 				.wren_a (1'b0),
 				.clock0 (clk), // read clock
@@ -153,28 +155,28 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 	           S_INCREMENT_HOLD = 4'b0110,
 	           S_FINISH         = 4'b0111,
 	           S_ENABLE_REFRESH = 4'b1000,
-			   S_DRAW           = 4'b1001;
+              S_DRAW           = 4'b1001;
 	
 	always @(*)
 	begin
 		case(Q)
 			S_RESET: Qn = S_WAIT;
-			S_WAIT:
-			begin
+			S_WAIT: Qn = go ? S_SELECT : S_WAIT;
+			/*begin
 				if(refresh)
 					Qn = S_ENABLE_REFRESH;
 				else if(go)
 					Qn = S_SELECT;
 				else
 					Qn = S_WAIT;
-			end
+			end*/
 			S_SELECT: Qn = S_READ;
-			S_READ: Qn = refreshing ? S_DRAW : S_DRAW_BUFFER;
-			S_DRAW_BUFFER: Qn = S_INCREMENT;
+			S_READ: Qn = S_DRAW; // refreshing ? S_DRAW : S_DRAW_BUFFER;
+			//S_DRAW_BUFFER: Qn = S_INCREMENT;
 			S_INCREMENT: Qn = S_INCREMENT_HOLD;
 			S_INCREMENT_HOLD: Qn = |offset ? S_SELECT : S_FINISH;
 			S_FINISH: Qn = S_RESET;
-			S_ENABLE_REFRESH: Qn = S_SELECT;
+			//S_ENABLE_REFRESH: Qn = S_SELECT;
 			S_DRAW: Qn = S_INCREMENT;
 		endcase
 	end
@@ -183,13 +185,13 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 	begin
 		enable_count = 0;
 		write_en = 0;
-		write_buffer = 0;
-		finished = 0;
+		//write_buffer = 0;
+		finished = refresh; // Set to 0 if using buffer
 		case(Q)
-			S_DRAW: write_en = 1;
+			S_DRAW: write_en = (colour_b != 6'b001100); // Change this if using buffer or changing colour bits
 			S_INCREMENT: enable_count = 1;
 			S_FINISH: finished = 1;
-			S_DRAW_BUFFER: write_buffer = (colour_b != 6'b001100); // Change this when changing bits per colour
+			// S_DRAW_BUFFER: write_buffer = (colour_b != 6'b001100); // Change this when changing bits per colour
 		endcase
 	end
 	
@@ -199,16 +201,16 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 			S_RESET:
 			begin
 				adr <= 0;
-				refreshing <= 0;
+				// refreshing <= 0;
 			end
 			S_SELECT:
 			begin
-				if((memory_select == 2'b11) & ~refreshing)
+				if(memory_select == 2'b11) // Check refreshing if using buffer
 					adr <= ({tile_select[3:2], offset_t[7:4]} * 64) + {tile_select[1:0], offset_t[3:0]};
 				else
 					adr <= (offset_y * WIDTH) + offset_x;
 			end
-			S_ENABLE_REFRESH: refreshing <= 1;
+			// S_ENABLE_REFRESH: refreshing <= 1;
 		endcase
 	end
 	
