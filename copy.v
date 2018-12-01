@@ -6,7 +6,7 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 	input [3:0] tile_select;
 	output [8:0] X_out;
 	output [7:0] Y_out;
-	output [5:0] colour;
+	output reg [5:0] colour; // Remove reg keyword if using buffer
 	output reg write_en, finished;
 	
 	localparam WIDTH = 320, HEIGHT = 240; // Still have to go change bit-widths when changing these!
@@ -188,7 +188,7 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 		//write_buffer = 0;
 		finished = refresh; // Set to 0 if using buffer
 		case(Q)
-			S_DRAW: write_en = (colour_b != 6'b001100); // Change this if using buffer or changing colour bits
+			S_DRAW: write_en = (colour != 6'b001100); // Change this if using buffer or changing colour bits
 			S_INCREMENT: enable_count = 1;
 			S_FINISH: finished = 1;
 			// S_DRAW_BUFFER: write_buffer = (colour_b != 6'b001100); // Change this when changing bits per colour
