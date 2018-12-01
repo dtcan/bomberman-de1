@@ -27,26 +27,20 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	
 	wire clock_1Hz;
 	wire true_reset;
-	wire [2:0] bc_max [0:5];
 	wire [8:0] bX;
-	wire [7:0] oX, oY, bY;
+	wire [7:0] bY, oX, oY;
 	wire [3:0] tX, tY, rtX, rtY;        // tile coordinates, r = rounded
-	wire [2:0] bomb_counters [0:5];     // Count-up timers for bombs/explosions
-	reg [12:0] bomb_reg [0:5];          // bomb_reg[i][12:9] = bomb_tY,
+	
+	wire [12:0] bomb_reg [0:5];          // bomb_reg[i][12:9] = bomb_tY,
 	                                    // bomb_reg[i][8:5] = bomb_tX,
 	                                    // bomb_reg[i][4:3] = bomb_radius,
 	                                    // bomb_reg[i][2:1] = bomb_potency,
 	                                    // bomb_reg[i][0] = bomb_enabled
-	wire [12:0] bomb_reg_test;
-	assign bomb_reg_test = bomb_reg[bomb_id];
+	wire [5:0] bomb_exists;
+	wire bomb_is_explosion [0:5];
+	wire bomb_died [0:5];
 	
 	assign true_reset = reset | tile_reset;
-	assign bc_max[0] = {1'b0, bomb_reg[0][2:1]} + 3'd2;
-	assign bc_max[1] = {1'b0, bomb_reg[1][2:1]} + 3'd2;
-	assign bc_max[2] = {1'b0, bomb_reg[2][2:1]} + 3'd2;
-	assign bc_max[3] = {1'b0, bomb_reg[3][2:1]} + 3'd2;
-	assign bc_max[4] = {1'b0, bomb_reg[4][2:1]} + 3'd2;
-	assign bc_max[5] = {1'b0, bomb_reg[5][2:1]} + 3'd2;
 	assign oX = X - 72;
 	assign oY = Y - 32;
 	assign tX = oX[7:4];                // Convert X and Y from pixel coordinates to tile coordinates
@@ -56,7 +50,7 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	
 	assign bX = {1'b0, bomb_reg[bomb_id][8:5], 4'b0000} + 72;
 	assign bY = {bomb_reg[bomb_id][12:9], 4'b0000} + 32;
-	assign bomb_info = {bY, bX, (bomb_counters[bomb_id] < 2 & bomb_reg[bomb_id][0])};
+	assign bomb_info = {bY, bX, (~bomb_is_explosion[bomb_id] & bomb_reg[bomb_id][0])};
 	
 	assign map_tile_id = game_stage[(tY * 11) + tX];
 	
@@ -66,135 +60,107 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 		.clock_div(clock_1Hz)
 	);
 	
-	count_max m0(
-		.clk(clock_1Hz),
+	// Player 1 bombs
+	solo_bomb b0(
+		.clk(clk),
+		.clock_1Hz(clock_1Hz),
 		.reset(true_reset),
-		.enable(bomb_reg[0][0]),
-		.max(bc_max[0]),
-		.q(bomb_counters[0])
+		.place(placeP1 & ~(|bomb_exists)),
+		.tX(rtX),
+		.tY(rtY),
+		.stats(statsP1),
+		.bomb_reg(bomb_reg[0]),
+		.exists(bomb_exists[0]),
+		.is_explosion(bomb_is_explosion[0]),
+		.died(bomb_died[0])
 	);
-	count_max m1(
-		.clk(clock_1Hz),
+	solo_bomb b1(
+		.clk(clk),
+		.clock_1Hz(clock_1Hz),
 		.reset(true_reset),
-		.enable(bomb_reg[1][0]),
-		.max(bc_max[1]),
-		.q(bomb_counters[1])
-	);
-	count_max m2(
-		.clk(clock_1Hz),
+		.place(placeP1 & ~(|bomb_exists) & ~bomb_reg[0]),
+		.tX(rtX),
+		.tY(rtY),
+		.stats(statsP1),
+		.bomb_reg(bomb_reg[1]),
+		.exists(bomb_exists[1]),
+		.is_explosion(bomb_is_explosion[1]),
+		.died(bomb_died[1])
+	);	
+	solo_bomb b2(
+		.clk(clk),
+		.clock_1Hz(clock_1Hz),
 		.reset(true_reset),
-		.enable(bomb_reg[2][0]),
-		.max(bc_max[2]),
-		.q(bomb_counters[2])
-	);
-	count_max m3(
-		.clk(clock_1Hz),
-		.reset(true_reset),
-		.enable(bomb_reg[3][0]),
-		.max(bc_max[3]),
-		.q(bomb_counters[3])
-	);
-	count_max m4(
-		.clk(clock_1Hz),
-		.reset(true_reset),
-		.enable(bomb_reg[4][0]),
-		.max(bc_max[4]),
-		.q(bomb_counters[4])
-	);
-	count_max m5(
-		.clk(clock_1Hz),
-		.reset(true_reset),
-		.enable(bomb_reg[5][0]),
-		.max(bc_max[5]),
-		.q(bomb_counters[5])
+		.place(placeP1 & ~(|bomb_exists) & ~bomb_reg[0] & ~bomb_reg[1]),
+		.tX(rtX),
+		.tY(rtY),
+		.stats(statsP1),
+		.bomb_reg(bomb_reg[2]),
+		.exists(bomb_exists[2]),
+		.is_explosion(bomb_is_explosion[2]),
+		.died(bomb_died[2])
 	);
 	
+	// Player 2 bombs
+	solo_bomb b3(
+		.clk(clk),
+		.clock_1Hz(clock_1Hz),
+		.reset(true_reset),
+		.place(placeP2 & ~(|bomb_exists)),
+		.tX(rtX),
+		.tY(rtY),
+		.stats(statsP2),
+		.bomb_reg(bomb_reg[3]),
+		.exists(bomb_exists[3]),
+		.is_explosion(bomb_is_explosion[3]),
+		.died(bomb_died[3])
+	);
+	solo_bomb b4(
+		.clk(clk),
+		.clock_1Hz(clock_1Hz),
+		.reset(true_reset),
+		.place(placeP2 & ~(|bomb_exists) & ~bomb_reg[3]),
+		.tX(rtX),
+		.tY(rtY),
+		.stats(statsP2),
+		.bomb_reg(bomb_reg[4]),
+		.exists(bomb_exists[4]),
+		.is_explosion(bomb_is_explosion[4]),
+		.died(bomb_died[4])
+	);	
+	solo_bomb b5(
+		.clk(clk),
+		.clock_1Hz(clock_1Hz),
+		.reset(true_reset),
+		.place(placeP2 & ~(|bomb_exists) & ~bomb_reg[3] & ~bomb_reg[4]),
+		.tX(rtX),
+		.tY(rtY),
+		.stats(statsP2),
+		.bomb_reg(bomb_reg[5]),
+		.exists(bomb_exists[5]),
+		.is_explosion(bomb_is_explosion[5]),
+		.died(bomb_died[5])
+	);
+	
+	// Update game stage
 	integer i = 0;
 	integer k = 0;
 	always @(posedge clk)
 	begin
-		reg can_place;
-		can_place = (((bomb_reg[0][8:5] != rtX) | (bomb_reg[0][12:9] != rtY) | ~bomb_reg[0][0]) &
-			         ((bomb_reg[1][8:5] != rtX) | (bomb_reg[1][12:9] != rtY) | ~bomb_reg[1][0]) &
-			         ((bomb_reg[2][8:5] != rtX) | (bomb_reg[2][12:9] != rtY) | ~bomb_reg[2][0]) &
-			         ((bomb_reg[3][8:5] != rtX) | (bomb_reg[3][12:9] != rtY) | ~bomb_reg[3][0]) &
-			         ((bomb_reg[4][8:5] != rtX) | (bomb_reg[4][12:9] != rtY) | ~bomb_reg[4][0]) &
-			         ((bomb_reg[5][8:5] != rtX) | (bomb_reg[5][12:9] != rtY) | ~bomb_reg[5][0]));
-		
 		if(true_reset) // Reset block
 		begin
-			bomb_reg[0] <= 0;
-			bomb_reg[1] <= 0;
-			bomb_reg[2] <= 0;
-			bomb_reg[3] <= 0;
-			bomb_reg[4] <= 0;
-			bomb_reg[5] <= 0;
 			for(i = 0; i < 121; i = i + 1)
 				if(init_stage[i] < 2)
 					game_stage[i] <= init_stage[i];
 				else
 					game_stage[i] <= 2;
 		end
-		else if(placeP1 & can_place & (~bomb_reg[0][0] | ~bomb_reg[2][0] | ~bomb_reg[4][0])) // Place a bomb for Player 1
-		begin
-			begin
-				if(~bomb_reg[0][0])
-				begin
-					bomb_reg[0][0] <= 1;
-					bomb_reg[0][4:1] <= statsP1;
-					bomb_reg[0][8:5] <= rtX;
-					bomb_reg[0][12:9] <= rtY;
-				end
-				else if(~bomb_reg[2][0])
-				begin
-					bomb_reg[2][0] <= 1;
-					bomb_reg[2][4:1] <= statsP1;
-					bomb_reg[2][8:5] <= rtX;
-					bomb_reg[2][12:9] <= rtY;
-				end
-				else if(~bomb_reg[4][0])
-				begin
-					bomb_reg[4][0] <= 1;
-					bomb_reg[4][4:1] <= statsP1;
-					bomb_reg[4][8:5] <= rtX;
-					bomb_reg[4][12:9] <= rtY;
-				end
-			end
-		end
-		else if(placeP2 & can_place & (~bomb_reg[1][0] | ~bomb_reg[3][0] | ~bomb_reg[5][0])) // Place a bomb for Player 2
-		begin
-			begin
-				if(~bomb_reg[1][0])
-				begin
-					bomb_reg[1][0] <= 1;
-					bomb_reg[1][4:1] <= statsP2;
-					bomb_reg[1][8:5] <= rtX;
-					bomb_reg[1][12:9] <= rtY;
-				end
-				else if(~bomb_reg[3][0])
-				begin
-					bomb_reg[3][0] <= 1;
-					bomb_reg[3][4:1] <= statsP2;
-					bomb_reg[3][8:5] <= rtX;
-					bomb_reg[3][12:9] <= rtY;
-				end
-				else if(~bomb_reg[5][0])
-				begin
-					bomb_reg[5][0] <= 1;
-					bomb_reg[5][4:1] <= statsP2;
-					bomb_reg[5][8:5] <= rtX;
-					bomb_reg[5][12:9] <= rtY;
-				end
-			end
-		end
 		else
 		begin
 			for(k = 0; k < 6; k = k + 1) // Check every counter, if 0 then reset bomb and destroy blocks 
 			begin
-				if(bomb_counters[k] == bc_max[k])
+				if(bomb_died[k])
 				begin
-					bomb_reg[k] <= 0;
-					
 					// Radius 1
 					if((game_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] == 2) &
 					   (init_stage[(bomb_reg[k][12:9] * 11) + bomb_reg[k][8:5] + 1] != 2))
@@ -311,7 +277,7 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 		has_explosion = 0;
 		for(j = 0; j < 6; j = j + 1)
 		begin
-			if(bomb_counters[j] >= 2 & bomb_reg[j][0])
+			if(bomb_is_explosion[j])
 			begin
 				if(((bomb_reg[j][8:5] == tX)     & (bomb_reg[j][12:9] == tY)) |
 				   ((bomb_reg[j][8:5] == tX + 1) & (bomb_reg[j][12:9] == tY)     & ~game_stage[(tY * 11) + tX][0] & (tX + 1 <= 10)) |
@@ -319,19 +285,54 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 				   ((bomb_reg[j][8:5] == tX - 1) & (bomb_reg[j][12:9] == tY)     & ~game_stage[(tY * 11) + tX][0] & (tX - 1 >= 0)) |
 				   ((bomb_reg[j][8:5] == tX)     & (bomb_reg[j][12:9] == tY - 1) & ~game_stage[(tY * 11) + tX][0] & (tY - 1 >= 0)))
 					has_explosion = 1;
-				if((((bomb_reg[j][8:5] == tX + 2) & (bomb_reg[j][12:9] == tY)     & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[(tY * 11) + tX + 1])   & (tX + 2 <= 10)) |
-					((bomb_reg[j][8:5] == tX)     & (bomb_reg[j][12:9] == tY + 2) & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[((tY + 1) * 11) + tX]) & (tY + 2 <= 10)) |
-					((bomb_reg[j][8:5] == tX - 2) & (bomb_reg[j][12:9] == tY)     & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[(tY * 11) + tX - 1])   & (tX - 2 >= 0)) |
-					((bomb_reg[j][8:5] == tX)     & (bomb_reg[j][12:9] == tY - 2) & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[((tY - 1) * 11) + tX]) & (tY - 2 >= 0))) &
-					(bomb_reg[j][4:3] >= 1))
+				else if((((bomb_reg[j][8:5] == tX + 2) & (bomb_reg[j][12:9] == tY)     & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[(tY * 11) + tX + 1])   & (tX + 2 <= 10)) |
+					      ((bomb_reg[j][8:5] == tX)     & (bomb_reg[j][12:9] == tY + 2) & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[((tY + 1) * 11) + tX]) & (tY + 2 <= 10)) |
+					      ((bomb_reg[j][8:5] == tX - 2) & (bomb_reg[j][12:9] == tY)     & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[(tY * 11) + tX - 1])   & (tX - 2 >= 0)) |
+					      ((bomb_reg[j][8:5] == tX)     & (bomb_reg[j][12:9] == tY - 2) & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[((tY - 1) * 11) + tX]) & (tY - 2 >= 0))) &
+					       (bomb_reg[j][4:3] >= 1))
 					has_explosion = 1;
-				if((((bomb_reg[j][8:5] == tX + 3) & (bomb_reg[j][12:9] == tY)     & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[(tY * 11) + tX + 2])   & ~(|game_stage[(tY * 11) + tX + 1])   & (tX + 3 <= 10)) |
-					((bomb_reg[j][8:5] == tX)     & (bomb_reg[j][12:9] == tY + 3) & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[((tY + 2) * 11) + tX]) & ~(|game_stage[((tY + 1) * 11) + tX]) & (tY + 3 <= 10)) |
-					((bomb_reg[j][8:5] == tX - 3) & (bomb_reg[j][12:9] == tY)     & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[(tY * 11) + tX - 2])   & ~(|game_stage[(tY * 11) + tX - 1])   & (tX - 3 >= 0)) |
-					((bomb_reg[j][8:5] == tX)     & (bomb_reg[j][12:9] == tY - 3) & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[((tY - 2) * 11) + tX]) & ~(|game_stage[((tY - 1) * 11) + tX]) & (tY - 3 >= 0))) &
-					(bomb_reg[j][4:3] >= 2))
+				else if((((bomb_reg[j][8:5] == tX + 3) & (bomb_reg[j][12:9] == tY)     & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[(tY * 11) + tX + 2])   & ~(|game_stage[(tY * 11) + tX + 1])   & (tX + 3 <= 10)) |
+					      ((bomb_reg[j][8:5] == tX)     & (bomb_reg[j][12:9] == tY + 3) & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[((tY + 2) * 11) + tX]) & ~(|game_stage[((tY + 1) * 11) + tX]) & (tY + 3 <= 10)) |
+					      ((bomb_reg[j][8:5] == tX - 3) & (bomb_reg[j][12:9] == tY)     & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[(tY * 11) + tX - 2])   & ~(|game_stage[(tY * 11) + tX - 1])   & (tX - 3 >= 0)) |
+					      ((bomb_reg[j][8:5] == tX)     & (bomb_reg[j][12:9] == tY - 3) & ~game_stage[(tY * 11) + tX][0] & ~(|game_stage[((tY - 2) * 11) + tX]) & ~(|game_stage[((tY - 1) * 11) + tX]) & (tY - 3 >= 0))) &
+					       (bomb_reg[j][4:3] >= 2))
 					has_explosion = 1;
 			end
+		end
+	end
+	
+endmodule
+
+module solo_bomb(clk, clock_1Hz, reset, place, tX, tY, stats, bomb_reg, exists, is_explosion, died);
+	input clk, clock_1Hz, reset, place;
+	input [3:0] tX, tY, stats;
+	output reg [12:0] bomb_reg;
+	output exists, is_explosion, died;
+	wire [2:0] counter, c_max;
+	
+	assign exists = ((bomb_reg[8:5] != tX) | (bomb_reg[12:9] != tY) | ~bomb_reg[0]);
+	assign is_explosion = (bomb_reg[0] & (counter >= 2));
+	assign died = (counter == c_max);
+	assign c_max = {1'b0, bomb_reg[2:1]} + 3'd2;
+	
+	count_max m0(
+		.clk(clk),
+		.reset(reset),
+		.enable(bomb_reg[0] & clock_1Hz),
+		.max(c_max),
+		.q(counter)
+	);
+	
+	always @(posedge clk)
+	begin
+		if(reset | died)
+			bomb_reg <= 0;
+		else if(place & ~bomb_reg[0])
+		begin
+			bomb_reg[0] <= 1;
+			bomb_reg[4:1] <= stats;
+			bomb_reg[8:5] <= tX;
+			bomb_reg[12:9] <= tY;
 		end
 	end
 	
@@ -342,17 +343,12 @@ module divide_sec(clk, reset, clock_div);
 	output clock_div;
 	
 	reg [27:0] q;
-	always @(posedge clk, posedge reset)
+	always @(posedge clk)
 	begin
-		if(reset)
+		if(reset | (q == 0))
 			q <= 49999999;
 		else
-		begin
-			if(q == 0)
-				q <= 49999999;
-			else
-				q <= q - 1;
-		end
+			q <= q - 1;
 	end
 	
 	assign clock_div = ~(|q);
@@ -364,7 +360,7 @@ module count_max(clk, reset, enable, max, q);
 	input [2:0] max;
 	output reg [2:0] q;
 	
-	always @(posedge clk, posedge reset)
+	always @(posedge clk)
 	begin
 		if(reset)
 			q <= 0;
