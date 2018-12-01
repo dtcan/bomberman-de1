@@ -25,7 +25,6 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	reg [3:0] game_stage [0:120];
 	initial $readmemh("game_stage_1.mem", init_stage);
 	
-	wire clock_1Hz;
 	wire true_reset;
 	wire [8:0] bX;
 	wire [7:0] bY, oX, oY;
@@ -63,7 +62,6 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	// Player 1 bombs
 	solo_bomb b0(
 		.clk(clk),
-		.clock_1Hz(clock_1Hz),
 		.reset(true_reset),
 		.place(placeP1 & ~(|bomb_exists)),
 		.tX(rtX),
@@ -76,9 +74,8 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	);
 	solo_bomb b1(
 		.clk(clk),
-		.clock_1Hz(clock_1Hz),
 		.reset(true_reset),
-		.place(placeP1 & ~(|bomb_exists) & ~bomb_reg[0]),
+		.place(placeP1 & ~(|bomb_exists) & bomb_reg[0]),
 		.tX(rtX),
 		.tY(rtY),
 		.stats(statsP1),
@@ -89,9 +86,8 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	);	
 	solo_bomb b2(
 		.clk(clk),
-		.clock_1Hz(clock_1Hz),
 		.reset(true_reset),
-		.place(placeP1 & ~(|bomb_exists) & ~bomb_reg[0] & ~bomb_reg[1]),
+		.place(placeP1 & ~(|bomb_exists) & bomb_reg[0] & bomb_reg[1]),
 		.tX(rtX),
 		.tY(rtY),
 		.stats(statsP1),
@@ -104,7 +100,6 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	// Player 2 bombs
 	solo_bomb b3(
 		.clk(clk),
-		.clock_1Hz(clock_1Hz),
 		.reset(true_reset),
 		.place(placeP2 & ~(|bomb_exists)),
 		.tX(rtX),
@@ -117,9 +112,8 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	);
 	solo_bomb b4(
 		.clk(clk),
-		.clock_1Hz(clock_1Hz),
 		.reset(true_reset),
-		.place(placeP2 & ~(|bomb_exists) & ~bomb_reg[3]),
+		.place(placeP2 & ~(|bomb_exists) & bomb_reg[3]),
 		.tX(rtX),
 		.tY(rtY),
 		.stats(statsP2),
@@ -130,9 +124,8 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	);	
 	solo_bomb b5(
 		.clk(clk),
-		.clock_1Hz(clock_1Hz),
 		.reset(true_reset),
-		.place(placeP2 & ~(|bomb_exists) & ~bomb_reg[3] & ~bomb_reg[4]),
+		.place(placeP2 & ~(|bomb_exists) & bomb_reg[3] & bomb_reg[4]),
 		.tX(rtX),
 		.tY(rtY),
 		.stats(statsP2),
@@ -303,51 +296,72 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	
 endmodule
 
-module solo_bomb(clk, clock_1Hz, reset, place, tX, tY, stats, bomb_reg, exists, is_explosion, died);
-	input clk, clock_1Hz, reset, place;
+module solo_bomb(clk, reset, place, tX, tY, stats, bomb_reg, exists, is_explosion, died);
+	input clk, reset, place;
 	input [3:0] tX, tY, stats;
 	output reg [12:0] bomb_reg;
-	output exists, is_explosion, died;
+	output exists, is_explosion;
+	output reg died;
 	wire [2:0] counter, c_max;
+	wire clock_1Hz;
 	
-	assign exists = ((bomb_reg[8:5] != tX) | (bomb_reg[12:9] != tY) | ~bomb_reg[0]);
+	assign exists = ((bomb_reg[8:5] == tX) & (bomb_reg[12:9] == tY) & bomb_reg[0]);
 	assign is_explosion = (bomb_reg[0] & (counter >= 2));
-	assign died = (counter == c_max);
 	assign c_max = {1'b0, bomb_reg[2:1]} + 3'd2;
+	
+	divide_sec d0(
+		.clk(clk),
+		.reset(reset | ~bomb_reg[0]),
+		.enable(bomb_reg[0]),
+		.clock_div(clock_1Hz)
+	);
 	
 	count_max m0(
 		.clk(clk),
 		.reset(reset),
-		.enable(bomb_reg[0] & clock_1Hz),
+		.enable(clock_1Hz),
 		.max(c_max),
 		.q(counter)
 	);
 	
 	always @(posedge clk)
 	begin
-		if(reset | died)
-			bomb_reg <= 0;
-		else if(place & ~bomb_reg[0])
+		if(reset)
 		begin
-			bomb_reg[0] <= 1;
-			bomb_reg[4:1] <= stats;
-			bomb_reg[8:5] <= tX;
-			bomb_reg[12:9] <= tY;
+			bomb_reg <= 0;
+			died <= 0;
+		end
+		else if(clock_1Hz & (counter == c_max))
+		begin
+			bomb_reg <= 0;
+			died <= 1;
+		end
+		else
+		begin
+			if(died)
+				died <= 0;
+			if(place & ~bomb_reg[0])
+			begin
+				bomb_reg[0] <= 1;
+				bomb_reg[4:1] <= stats;
+				bomb_reg[8:5] <= tX;
+				bomb_reg[12:9] <= tY;
+			end
 		end
 	end
 	
 endmodule
 
-module divide_sec(clk, reset, clock_div);
-	input clk, reset;
+module divide_sec(clk, reset, enable, clock_div);
+	input clk, reset, enable;
 	output clock_div;
 	
 	reg [27:0] q;
 	always @(posedge clk)
 	begin
 		if(reset | (q == 0))
-			q <= 49999999;
-		else
+			q <= 9; // Change to 49999999 when not testing
+		else if(enable)
 			q <= q - 1;
 	end
 	
