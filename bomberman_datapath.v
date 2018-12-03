@@ -236,6 +236,16 @@ module bomberman_datapath(
 					p1_lives <= 2'd3;
 					p2_lives <= 2'd3;
 				end
+			else if (draw_tile)
+				begin
+					bomb_X <= 9'd72 + {1'b0, tile_count_x, 4'b0000};
+					bomb_Y <= 8'd32 + {tile_count_y, 4'b0000};
+				end
+			else if (draw_explosion)
+				begin
+					bomb_X <= 9'd72 + {1'b0, tile_count_x, 4'b0000}; // multiply tile_count_x by 16
+					bomb_Y <= 8'd32 + {tile_count_y, 4'b0000};		 // multiply tile_count_y by 16
+				end
 			else if (check_p1)
 				begin
 					case (corner_id)
@@ -248,6 +258,8 @@ module bomberman_datapath(
 										p1_lives <= p1_lives - 1'd1;
 										p1_ic_start <= 1'd1;
 									end
+								else if (p1_ic_start)
+									p1_ic_start <= 1'd0;
 								p1_is_empty [0] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd1: // top right corner.
@@ -259,6 +271,8 @@ module bomberman_datapath(
 										p1_lives <= p1_lives - 1'd1;
 										p1_ic_start <= 1'd1;
 									end
+								else if (p1_ic_start)
+									p1_ic_start <= 1'd0;
 								p1_is_empty [1] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd2: // bottom left corner.
@@ -270,6 +284,8 @@ module bomberman_datapath(
 										p1_lives <= p1_lives - 1'd1;
 										p1_ic_start <= 1'd1;
 									end
+								else if (p1_ic_start)
+									p1_ic_start <= 1'd0;
 								p1_is_empty [2] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd3: // bottom right corner.
@@ -281,6 +297,8 @@ module bomberman_datapath(
 										p1_lives <= p1_lives - 1'd1;
 										p1_ic_start <= 1'd1;
 									end
+								else if (p1_ic_start)
+									p1_ic_start <= 1'd0;
 								p1_is_empty [3] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end				
 					endcase
@@ -297,6 +315,8 @@ module bomberman_datapath(
 										p2_lives <= p2_lives - 1'd1;
 										p2_ic_start <= 1'd1;
 									end
+								else if (p2_ic_start)
+									p2_ic_start <= 1'd0;
 								p2_is_empty [0] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd1: // top right corner.
@@ -308,6 +328,8 @@ module bomberman_datapath(
 										p2_lives <= p2_lives - 1'd1;
 										p2_ic_start <= 1'd1;
 									end
+								else if (p2_ic_start)
+									p2_ic_start <= 1'd0;
 								p2_is_empty [1] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd2: // bottom left corner.
@@ -319,6 +341,8 @@ module bomberman_datapath(
 										p2_lives <= p2_lives - 1'd1;
 										p2_ic_start <= 1'd1;
 									end
+								else if (p2_ic_start)
+									p2_ic_start <= 1'd0;
 								p2_is_empty [2] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end
 						2'd3: // bottom right corner.
@@ -330,6 +354,8 @@ module bomberman_datapath(
 										p2_lives <= p2_lives - 1'd1;
 										p2_ic_start <= 1'd1;
 									end
+								else if (p2_ic_start)
+									p2_ic_start <= 1'd0;
 								p2_is_empty [3] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
 							end				
 					endcase
@@ -343,14 +369,6 @@ module bomberman_datapath(
 				begin
 					bomb_X <= p2_X;
 					bomb_Y <= p2_Y [7:0];
-				end
-			else if (p1_ic_start)
-				begin
-					p1_ic_start <= 0;
-				end
-			else if (p2_ic_start)
-				begin
-					p2_ic_start <= 0;
 				end
 		end
 		
@@ -517,33 +535,19 @@ module invincibility_counter(is_invincible, length, clock, reset, start);
 	input clock, reset, start;
 	
 	reg [51:0] count;
-	reg enable;
 
 	always @(posedge clock, posedge reset)
 		begin
 			if (reset)
-				begin
-					enable <= 0;
-					count <= 52'd0;
-				end
-			// count to 50m * length
+				count <= 52'd0;
 			else if (start)
-				begin
-					enable <= 1;
-				end
-			else if (count == 52'd0)
-				begin
-					enable <= 0;
-				end
-			else if (enable)
-				begin
-					if (count == (52'd50000000 * length - 1))
-						count <= 52'd0;
-					else
-						count <= count + 52'd1;
-				end
+				count <= 52'd1;
+			else if (count != 52'd0)
+				count <= count + 52d'1;
+			else if (count == (52'd50000000 * length - 1))
+				count <= 52'd0;
 		end
 	
 	assign is_invincible = (count == 52'd0) ? 1'd0 : 1'd1;
-		
+	
 endmodule

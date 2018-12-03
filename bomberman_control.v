@@ -116,28 +116,28 @@ module bomberman_control(
 	always @ (*)
 		begin: state_table
 			case (current_state)
-				LOAD_TITLE: 		next_state = finished 			? DISPLAY_TITLE : LOAD_TITLE;  // loop in LOAD_TITLE until finished drawing title background.
-				DISPLAY_TITLE:		next_state = finished			? TITLE : DISPLAY_TITLE;		 //
-				TITLE:				next_state = go					? LOAD_STAGE : TITLE;			 // loop in TITLE until user inputs to start game.
-				LOAD_STAGE:			next_state = finished			? DISPLAY_STAGE : LOAD_STAGE;	 // loop in LOAD_STAGE until finished drawing stage background.
-				DISPLAY_STAGE: 	next_state = finished			? DRAW_TILE : DISPLAY_STAGE;
-				DRAW_TILE:			next_state = finished 			? DRAW_EXPLOSION : DRAW_TILE;	 // loop in DRAW_TILE until finished drawing stage tile.
-				DRAW_EXPLOSION:	next_state = finished			? UPDATE_TILE : DRAW_EXPLOSION;// loop in DRAW_EXPLOSION until finished drawing explosion on stage tile.
-				UPDATE_TILE:		next_state = all_tiles_drawn	? DRAW_BOMB : DRAW_TILE;		 // loop back to DRAW_TILE until finished drawing all tiles.
-				DRAW_BOMB:			next_state = finished 			? UPDATE_BOMB : DRAW_BOMB;		 // loop in DRAW_BOMB until finished drawing current bomb.
-				UPDATE_BOMB:		next_state = all_bombs_drawn	? CHECK_P1_CORNER : DRAW_BOMB; // loop back to DRAW_BOMB until finished drawing all bombs.
-				CHECK_P1_CORNER:	next_state = UPDATE_P1_CORNER;										 	
-				UPDATE_P1_CORNER:	next_state = all_checked		? DRAW_P1 : CHECK_P1_CORNER;	 // loop back to CHECK_P1_CORNER until all 4 corners are checked.
-				DRAW_P1:				next_state = finished			? DRAW_P1_HP : DRAW_P1;	 		 // loop in DRAW_P1 until finished drawing Player 1's sprite.
-				DRAW_P1_HP:			next_state = finished			? UPDATE_P1_HP : DRAW_P1_HP;	 // loop in DRAW_P1_HP until finished drawing current P1's HP.
-				UPDATE_P1_HP:		next_state = all_P1HP_drawn	? CHECK_P2_CORNER : DRAW_P1_HP;// loop back to DRAW_P1_HP until finished drawing all P1's HPs.
-				CHECK_P2_CORNER:	next_state = UPDATE_P2_CORNER;
-				UPDATE_P2_CORNER: next_state = all_checked		? DRAW_P2 : CHECK_P2_CORNER;	 // loop back to CHECK_P2_CORNER until all 4 corners are checked.
-				DRAW_P2: 			next_state = finished 			? DRAW_P2_HP : DRAW_P2;			 // loop in DRAW_P2 until finished drawing Player 2's sprite.
-				DRAW_P2_HP:			next_state = finished			? UPDATE_P2_HP : DRAW_P2_HP;	 // loop in DRAW_P2_HP until finished drawing current P2's HP.
-				UPDATE_P2_HP:		next_state = all_P2HP_drawn	? GAME_IDLE : DRAW_P2_HP;	 	 // loop back to DRAW_P2_HP until finished drawing all P2's HPs.
-				GAME_IDLE:			next_state = clock_60Hz			? UPDATE_STAGE : GAME_IDLE;	 // loop in GAME_IDLE until delay is complete. 
-				UPDATE_STAGE:																						 // loop back to DRAW_TILE until a Player is killed after updating stage.
+				LOAD_TITLE: 			next_state = finished 			? DISPLAY_TITLE : LOAD_TITLE;  			// loop in LOAD_TITLE until finished drawing title background to buffer.
+				DISPLAY_TITLE:			next_state = finished			? TITLE : DISPLAY_TITLE;		 			// loop in DISPLAY_TITLE until finished drawing title background to VGA.
+				TITLE:					next_state = go					? LOAD_STAGE : TITLE;			 			// loop in TITLE until user inputs to start game.
+				LOAD_STAGE:				next_state = finished			? DISPLAY_STAGE : LOAD_STAGE;	 			// loop in LOAD_STAGE until finished drawing stage background to buffer.
+				DISPLAY_STAGE: 		next_state = finished			? DRAW_TILE : DISPLAY_STAGE;	 			// loop in DISPLAY_STAGE until finished drawing title background to VGA.
+				DRAW_TILE:				next_state = finished 			? DRAW_EXPLOSION : DRAW_TILE;	 			// loop in DRAW_TILE until finished drawing stage tile.
+				DRAW_EXPLOSION:		next_state = finished			? UPDATE_TILE : DRAW_EXPLOSION;			// loop in DRAW_EXPLOSION until finished drawing explosion on stage tile.
+				UPDATE_TILE:			next_state = all_tiles_drawn	? DRAW_BOMB : DRAW_TILE;		 			// loop back to DRAW_TILE until finished drawing all tiles.
+				DRAW_BOMB:				next_state = finished 			? UPDATE_BOMB : DRAW_BOMB;		 			// loop in DRAW_BOMB until finished drawing current bomb.
+				UPDATE_BOMB:			next_state = all_bombs_drawn	? CHECK_P1_CORNER : DRAW_BOMB; 			// loop back to DRAW_BOMB until finished drawing all bombs.
+				CHECK_P1_CORNER:		next_state = UPDATE_P1_CORNER;										 	
+				UPDATE_P1_CORNER:		next_state = all_checked		? DRAW_P1 : CHECK_P1_CORNER;	 			// loop back to CHECK_P1_CORNER until all 4 corners are checked.
+				DRAW_P1:					next_state = finished			? DRAW_P1_HP : DRAW_P1;	 		 			// loop in DRAW_P1 until finished drawing Player 1's sprite.
+				DRAW_P1_HP:				next_state = finished			? UPDATE_P1_HP : DRAW_P1_HP;	 			// loop in DRAW_P1_HP until finished drawing current P1's HP.
+				UPDATE_P1_HP:			next_state = all_P1HP_drawn	? CHECK_P2_CORNER : DRAW_P1_HP;			// loop back to DRAW_P1_HP until finished drawing all P1's HPs.
+				CHECK_P2_CORNER:		next_state = UPDATE_P2_CORNER;
+				UPDATE_P2_CORNER: 	next_state = all_checked		? DRAW_P2 : CHECK_P2_CORNER;	 			// loop back to CHECK_P2_CORNER until all 4 corners are checked.
+				DRAW_P2: 				next_state = finished 			? DRAW_P2_HP : DRAW_P2;			 			// loop in DRAW_P2 until finished drawing Player 2's sprite.
+				DRAW_P2_HP:				next_state = finished			? UPDATE_P2_HP : DRAW_P2_HP;	 			// loop in DRAW_P2_HP until finished drawing current P2's HP.
+				UPDATE_P2_HP:			next_state = all_P2HP_drawn	? GAME_IDLE : DRAW_P2_HP;	 	 			// loop back to DRAW_P2_HP until finished drawing all P2's HPs.
+				GAME_IDLE:				next_state = clock_60Hz			? UPDATE_STAGE : GAME_IDLE;	 			// loop in GAME_IDLE until delay is complete. 
+				UPDATE_STAGE:																						 	 			// loop back to DRAW_TILE until a Player is killed after updating stage.
 					begin
 						if (game_over)
 							next_state = LOAD_WIN_SCREEN;
@@ -146,10 +146,10 @@ module bomberman_control(
 						else
 							next_state = UPDATE_STAGE;
 					end
-				LOAD_WIN_SCREEN:	next_state = finished			? DISPLAY_WIN_SCREEN : LOAD_WIN_SCREEN;// loop in LOAD_WIN_SCREEN until finished drawing win screen background.
-				DISPLAY_WIN_SCREEN: next_state = finished			? WIN_SCREEN : DISPLAY_WIN_SCREEN; 
-				WIN_SCREEN:			next_state = go					? LOAD_TITLE : WIN_SCREEN;		 // loop in WIN_SCREEN until user inputs to return to title.
-				default: next_state = LOAD_TITLE;
+				LOAD_WIN_SCREEN:		next_state = finished			? DISPLAY_WIN_SCREEN : LOAD_WIN_SCREEN;// loop in LOAD_WIN_SCREEN until finished drawing win screen background to buffer.
+				DISPLAY_WIN_SCREEN: 	next_state = finished			? WIN_SCREEN : DISPLAY_WIN_SCREEN; 		//loop in DISPLAY_WIN_SCREEN until finished drawing title background to VGA.
+				WIN_SCREEN:				next_state = go					? LOAD_TITLE : WIN_SCREEN;		 			// loop in WIN_SCREEN until user inputs to return to title.
+				default: 				next_state = LOAD_TITLE;
 			endcase
 		end
 		
@@ -381,7 +381,7 @@ module delay_counter(clock_60Hz, clock, reset, enable);
 			// count to 833 333 - 1
 			else if (enable)
 				begin
-					if (count == 20'd833332) 
+					if (count == 20'd833332)
 						count <= 20'd0;
 					else
 						count <= count + 20'd1;
