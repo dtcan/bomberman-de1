@@ -28,24 +28,28 @@ module bomberman_datapath(
 	); 
 	
 	reg [8:0] copy_X, copy_Y, bomb_X, bomb_Y;
-	reg [3:0] tile_select, p1_is_empty, p2_is_empty;
+	reg [3:0] tile_select, p1_is_passable, p2_is_passable;
+	reg [3:0] p1_speed, p2_speed; // Player speed stats.
+	reg [3:0] statsP1, statsP2; 	// Player powerup stats, format is {num_bombs[1:0], radius[1:0], potency[1:0]}.
 	reg p1_x_enable, p1_y_enable, p2_x_enable, p2_y_enable, p1_ic_start, p2_ic_start;
 	
 	wire [17:0] bomb_info;
 	wire [8:0] p1_X, p1_Y, p2_X, p2_Y;
-	wire [4:0] p1_speed, p2_speed;
-	wire [1:0] p1_length, p2_length;
 	wire p1_is_invincible, p2_is_invincible, has_explosion;
-	
-	assign p1_speed = 5'd2; // for now set 'speed' of sprite to be 8 pixels moved per second
-	assign p2_speed = 5'd2;
-	
-	assign p1_length = 2'd2; // for now set invincibility length to 2 seconds.
-	assign p2_length = 2'd2;
 	
 	wire [3:0] map_tile_id, tile_count_x, tile_count_y;
 	wire all_tiles_counted_x, all_tiles_counted_y;
 	assign all_tiles_drawn = (all_tiles_counted_x & all_tiles_counted_y);
+	
+	// limits for invincibility length, player speed, maximum number of bombs, explosion radius and potency.
+	wire [1:0] invincibility_length;
+	wire speed_limit,
+	wire bomb_limit, radius_limit, potency_limit;
+	assign invincibility_length = 2'd2; // set invincibility length of players to 2s.
+	assign speed_limit = 4'd8;				// set speed limit to (8 * 4) pixels per second.
+	assign bomb_limit = 2'd2; 				// set bomb limit to 3 per player (0 means 1).
+	assign radius_limit = 2'd2; 			// set explosion radius limit to 3 tiles per player.
+	assign potency_limit = 2'd2; 			// set explosion potency limit to 3 seconds per player.
 	
 	// P1
 
@@ -176,21 +180,21 @@ module bomberman_datapath(
 			else
 				begin
 					if (p1_xdir)
-						p1_x_enable <= (p1_is_empty[1] & p1_is_empty[3] & p1_xmov) ? 1'd1 : 1'd0;
+						p1_x_enable <= (p1_is_passable[1] & p1_is_passable[3] & p1_xmov) ? 1'd1 : 1'd0;
 					else if (!p1_xdir)
-						p1_x_enable <= (p1_is_empty[0] & p1_is_empty[2] & p1_xmov) ? 1'd1 : 1'd0;
+						p1_x_enable <= (p1_is_passable[0] & p1_is_passable[2] & p1_xmov) ? 1'd1 : 1'd0;
 					else if (p1_ydir)
-						p1_y_enable <= (p1_is_empty[2] & p1_is_empty[3] & p1_ymov) ? 1'd1 : 1'd0;
+						p1_y_enable <= (p1_is_passable[2] & p1_is_passable[3] & p1_ymov) ? 1'd1 : 1'd0;
 					else if (!p1_ydir)
-						p1_y_enable <= (p1_is_empty[0] & p1_is_empty[1] & p1_ymov) ? 1'd1 : 1'd0;
+						p1_y_enable <= (p1_is_passable[0] & p1_is_passable[1] & p1_ymov) ? 1'd1 : 1'd0;
 					if (p2_xdir)
-						p2_x_enable <= (p2_is_empty[1] & p2_is_empty[3] & p2_xmov) ? 1'd1 : 1'd0;
+						p2_x_enable <= (p2_is_passable[1] & p2_is_passable[3] & p2_xmov) ? 1'd1 : 1'd0;
 					else if (!p2_xdir)
-						p2_x_enable <= (p2_is_empty[0] & p2_is_empty[2] & p2_xmov) ? 1'd1 : 1'd0;
+						p2_x_enable <= (p2_is_passable[0] & p2_is_passable[2] & p2_xmov) ? 1'd1 : 1'd0;
 					else if (p2_ydir)
-						p2_y_enable <= (p2_is_empty[2] & p2_is_empty[3] & p2_ymov) ? 1'd1 : 1'd0;
+						p2_y_enable <= (p2_is_passable[2] & p2_is_passable[3] & p2_ymov) ? 1'd1 : 1'd0;
 					else if (!p2_ydir)
-						p2_y_enable <= (p2_is_empty[0] & p2_is_empty[1] & p2_ymov) ? 1'd1 : 1'd0;
+						p2_y_enable <= (p2_is_passable[0] & p2_is_passable[1] & p2_ymov) ? 1'd1 : 1'd0;
 				end
 		end
 			
@@ -224,116 +228,163 @@ module bomberman_datapath(
 				end
 			else if (check_p1)
 				begin
-					case (corner_id)
-						2'd0: // top left corner.
+					bomb_X <= p1_X + (9'd15 * corner_id [0]);
+					bomb_Y <= p1_Y + (9'd15 * corner_id [1]);
+					if (has_explosion & !p1_is_invincible)
+						begin
+							p1_lives <= p1_lives - 1'd1;
+							p1_ic_start <= 1'd1;
+						end
+					else if (p1_ic_start)
+						p1_ic_start <= 1'd0;
+					case (map_tile_id)
+						4'd0: // empty tile.
 							begin
-								bomb_X <= p1_X;
-								bomb_Y <= p1_Y [7:0];
-								if (has_explosion & !p1_is_invincible)
-									begin
-										p1_lives <= p1_lives - 1'd1;
-										p1_ic_start <= 1'd1;
-									end
-								else if (p1_ic_start)
-									p1_ic_start <= 1'd0;
-								p1_is_empty [0] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd0;
 							end
-						2'd1: // top right corner.
+						4'd3: // extra bomb power up.
 							begin
-								bomb_X <= p1_X + 9'd15;
-								bomb_Y <= p1_Y [7:0];
-								if (has_explosion & !p1_is_invincible)
-									begin
-										p1_lives <= p1_lives - 1'd1;
-										p1_ic_start <= 1'd1;
-									end
-								else if (p1_ic_start)
-									p1_ic_start <= 1'd0;
-								p1_is_empty [1] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								if (statsP1 [5:4] < bomb_limit) 		// only increase if less than limit, do nothing otherwise.
+									statsP1 [5:4] <= statsP1 [5:4] + 1;
 							end
-						2'd2: // bottom left corner.
+						4'd4: // explosion radius power up.
 							begin
-								bomb_X <= p1_X;
-								bomb_Y <= p1_Y [7:0] + 8'd15;
-								if (has_explosion & !p1_is_invincible)
-									begin
-										p1_lives <= p1_lives - 1'd1;
-										p1_ic_start <= 1'd1;
-									end
-								else if (p1_ic_start)
-									p1_ic_start <= 1'd0;
-								p1_is_empty [2] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								if (statsP1 [3:2] < radius_limit) 	// only increase if less than limit, do nothing otherwise.
+									statsP1 [3:2] <= statsP1 [3:2] + 1;
 							end
-						2'd3: // bottom right corner.
+						4'd5: // explosion potency power up.
 							begin
-								bomb_X <= p1_X + 9'd15;
-								bomb_Y <= p1_Y [7:0] + 8'd15;
-								if (has_explosion & !p1_is_invincible)
-									begin
-										p1_lives <= p1_lives - 1'd1;
-										p1_ic_start <= 1'd1;
-									end
-								else if (p1_ic_start)
-									p1_ic_start <= 1'd0;
-								p1_is_empty [3] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
-							end				
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								if (statsP1 [1:0] < potency_limit) 	// only increase if less than limit, do nothing otherwise.
+									statsP1 [1:0] <= statsP1 [1:0] + 1;
+							end
+						4'd6: // throw bomb power up.
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								// TODO
+							end
+						4'd7: // extra life power up.
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								if (p1_lives < 2'd2)						// only increase if less than limit, do nothing otherwise.
+									p1_lives <= p1_lives + 1'd1;	
+							end
+						4'd8: // player speed power up.
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								if (p1_speed < speed_limit)			// only increase if less than limit, do nothing otherwise.
+									p1_speed < p1_speed + 1'd1;
+							end
+						4'd12: // P1 sprite.
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd0;
+							end
+						4'd13: // P2 sprite.
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd0;
+							end
+						4'd14: // P1 sprite (inv).
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd0;
+							end
+						4'd15: // P2 sprite (inv).
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd0;
+							end
+						default:
+							begin
+								p1_is_passable [corner_id] <= 1'd0;
+								destroy_tile <= 1'd0;
+							end
 					endcase
 				end
 			else if (check_p2)
 				begin
-					case (corner_id)
-						2'd0: // top left corner.
+					case (map_tile_id)
+						4'd0: // empty tile.
 							begin
-								bomb_X <= p2_X;
-								bomb_Y <= p2_Y [7:0];
-								if (has_explosion & !p2_is_invincible)
-									begin
-										p2_lives <= p2_lives - 1'd1;
-										p2_ic_start <= 1'd1;
-									end
-								else if (p2_ic_start)
-									p2_ic_start <= 1'd0;
-								p2_is_empty [0] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd0;
 							end
-						2'd1: // top right corner.
+						4'd3: // extra bomb power up.
 							begin
-								bomb_X <= p2_X + 9'd15;
-								bomb_Y <= p2_Y [7:0];
-								if (has_explosion & !p2_is_invincible)
-									begin
-										p2_lives <= p2_lives - 1'd1;
-										p2_ic_start <= 1'd1;
-									end
-								else if (p2_ic_start)
-									p2_ic_start <= 1'd0;
-								p2_is_empty [1] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								if (statsP1 [5:4] < bomb_limit) 		// only increase if less than limit, do nothing otherwise.
+									statsP1 [5:4] <= statsP1 [5:4] + 1;
 							end
-						2'd2: // bottom left corner.
+						4'd4: // explosion radius power up.
 							begin
-								bomb_X <= p2_X;
-								bomb_Y <= p2_Y [7:0] + 8'd15;
-								if (has_explosion & !p2_is_invincible)
-									begin
-										p2_lives <= p2_lives - 1'd1;
-										p2_ic_start <= 1'd1;
-									end
-								else if (p2_ic_start)
-									p2_ic_start <= 1'd0;
-								p2_is_empty [2] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								if (statsP1 [3:2] < radius_limit) 	// only increase if less than limit, do nothing otherwise.
+									statsP1 [3:2] <= statsP1 [3:2] + 1;
 							end
-						2'd3: // bottom right corner.
+						4'd5: // explosion potency power up.
 							begin
-								bomb_X <= p2_X + 9'd15;
-								bomb_Y <= p2_Y [7:0] + 8'd15;
-								if (has_explosion & !p2_is_invincible)
-									begin
-										p2_lives <= p2_lives - 1'd1;
-										p2_ic_start <= 1'd1;
-									end
-								else if (p2_ic_start)
-									p2_ic_start <= 1'd0;
-								p2_is_empty [3] <= (map_tile_id == 4'd0) ? 1'd1 : 1'd0;
-							end				
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								if (statsP1 [1:0] < potency_limit) 	// only increase if less than limit, do nothing otherwise.
+									statsP1 [1:0] <= statsP1 [1:0] + 1;
+							end
+						4'd6: // throw bomb power up.
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								// TODO
+							end
+						4'd7: // extra life power up.
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								if (p1_lives < 2'd2)						// only increase if less than limit, do nothing otherwise.
+									p1_lives <= p1_lives + 1'd1;	
+							end
+						4'd8: // player speed power up.
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd1;					// remove power up tile from game stage.
+								if (p1_speed < speed_limit)			// only increase if less than limit, do nothing otherwise.
+									p1_speed < p1_speed + 1'd1;
+							end
+						4'd12: // P1 sprite.
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd0;
+							end
+						4'd13: // P2 sprite.
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd0;
+							end
+						4'd14: // P1 sprite (inv).
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd0;
+							end
+						4'd15: // P2 sprite (inv).
+							begin
+								p1_is_passable [corner_id] <= 1'd1;
+								destroy_tile <= 1'd0;
+							end
+						default:
+							begin
+								p1_is_passable [corner_id] <= 1'd0;
+								destroy_tile <= 1'd0;
+							end
 					endcase
 				end
 			else if (p1_bomb)
@@ -423,7 +474,7 @@ module coordinate_counter(
 
 	input [8:0] start_coord,
 	input [8:0] min_coord, max_coord,
-	input [4:0] increment,
+	input [3:0] increment,
 	input clock, reset, enable, direction
 	);
 	
