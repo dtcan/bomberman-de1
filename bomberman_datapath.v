@@ -45,7 +45,7 @@ module bomberman_datapath(
 	
 	// limits for invincibility length, player speed, maximum number of bombs, explosion radius and potency.
 	wire [1:0] invincibility_length;
-	wire speed_limit,
+	wire speed_limit;
 	wire bomb_limit, radius_limit, potency_limit;
 	assign invincibility_length = 2'd2; 							// set invincibility length of players to 2s.
 	assign speed_limit = 4'd8;											// set speed limit to (8 * 4) pixels per second.
@@ -145,8 +145,8 @@ module bomberman_datapath(
 		.Y(bomb_Y),
 		.statsP1(statsP1),
 		.statsP2(statsP2),
-		.placeP1(p1_bomb),
-		.placeP2(p2_bomb),
+		.placeP1((p1_bomb & read_input)),
+		.placeP2((p2_bomb & read_input)),
 		.bomb_id(bomb_id),
 		.bomb_info(bomb_info),
 		.has_explosion(has_explosion),
@@ -185,7 +185,7 @@ module bomberman_datapath(
 						p1_x_enable <= (p1_is_passable[1] & p1_is_passable[3] & p1_xmov) ? 1'd1 : 1'd0;
 					else if (!p1_xdir)
 						p1_x_enable <= (p1_is_passable[0] & p1_is_passable[2] & p1_xmov) ? 1'd1 : 1'd0;
-					else if (p1_ydir)
+					if (p1_ydir)
 						p1_y_enable <= (p1_is_passable[2] & p1_is_passable[3] & p1_ymov) ? 1'd1 : 1'd0;
 					else if (!p1_ydir)
 						p1_y_enable <= (p1_is_passable[0] & p1_is_passable[1] & p1_ymov) ? 1'd1 : 1'd0;
@@ -193,7 +193,7 @@ module bomberman_datapath(
 						p2_x_enable <= (p2_is_passable[1] & p2_is_passable[3] & p2_xmov) ? 1'd1 : 1'd0;
 					else if (!p2_xdir)
 						p2_x_enable <= (p2_is_passable[0] & p2_is_passable[2] & p2_xmov) ? 1'd1 : 1'd0;
-					else if (p2_ydir)
+					if (p2_ydir)
 						p2_y_enable <= (p2_is_passable[2] & p2_is_passable[3] & p2_ymov) ? 1'd1 : 1'd0;
 					else if (!p2_ydir)
 						p2_y_enable <= (p2_is_passable[0] & p2_is_passable[1] & p2_ymov) ? 1'd1 : 1'd0;
@@ -284,7 +284,7 @@ module bomberman_datapath(
 								p1_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
 								if (p1_speed < speed_limit)			// only increase if less than limit, do nothing otherwise.
-									p1_speed < p1_speed + 1'd1;
+									p1_speed <= p1_speed + 1'd1;
 							end
 						4'd12: // P1 sprite.
 							begin
@@ -369,7 +369,7 @@ module bomberman_datapath(
 								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
 								if (p2_speed < speed_limit)			// only increase if less than limit, do nothing otherwise.
-									p2_speed < p2_speed + 1'd1;
+									p2_speed <= p2_speed + 1'd1;
 							end
 						4'd12: // P1 sprite.
 							begin
@@ -398,15 +398,18 @@ module bomberman_datapath(
 							end
 					endcase
 				end
-			else if (p1_bomb)
+			else if (read_input)
 				begin
-					bomb_X <= p1_X;
-					bomb_Y <= p1_Y [7:0];
-				end
-			else if (p2_bomb)
-				begin
-					bomb_X <= p2_X;
-					bomb_Y <= p2_Y [7:0];
+					if (p1_bomb)
+						begin
+							bomb_X <= p1_X;
+							bomb_Y <= p1_Y [7:0];
+						end
+					if (p2_bomb)
+						begin
+							bomb_X <= p2_X;
+							bomb_Y <= p2_Y [7:0];
+						end
 				end
 		end
 		
