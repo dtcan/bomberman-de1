@@ -4,7 +4,7 @@
 module bomberman_control(
 	output reg [1:0] memory_select,
 	output reg copy_enable, tc_enable,
-	output reg player_reset, tile_reset,
+	output reg game_reset,
 	output reg draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
 	output reg print_screen, read_input,
 	output [2:0] bomb_id,
@@ -160,8 +160,7 @@ module bomberman_control(
 			memory_select = 2'd0;
 			copy_enable = 0;
 			tc_enable = 0;
-			player_reset = 0;
-			tile_reset = 0;
+			game_reset = 0;
 			
 			draw_stage = 0;
 			draw_tile = 0;
@@ -213,8 +212,7 @@ module bomberman_control(
 				
 				DISPLAY_STAGE:
 					begin
-						player_reset = 1;
-						tile_reset = 1;						
+						game_reset = 1;					
 						dc_reset = 1;
 						bc_reset = 1;
 						lc_reset = 1;

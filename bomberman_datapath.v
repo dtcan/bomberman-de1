@@ -16,7 +16,7 @@ module bomberman_datapath(
 	input [2:0] bomb_id,
 	input [1:0] memory_select, p1_hp_id, p2_hp_id, corner_id,
 	input copy_enable, tc_enable,
-	input player_reset, tile_reset,
+	input game_reset,
 	input draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
 	input refresh, print_screen, read_input,
 	
@@ -28,12 +28,13 @@ module bomberman_datapath(
 	); 
 	
 	reg [8:0] copy_X, copy_Y, bomb_X, bomb_Y;
+	reg [5:0] statsP1, statsP2; 										// Player powerup stats, format is {num_bombs[1:0], radius[1:0], potency[1:0]}.
 	reg [3:0] tile_select; 
 	reg [3:0] p1_is_passable, p2_is_passable; 					// keeps track of whether corner tiles of each player are passable.
 	reg [3:0] p1_speed, p2_speed; 									// Player speed stats.
-	reg [3:0] statsP1, statsP2; 										// Player powerup stats, format is {num_bombs[1:0], radius[1:0], potency[1:0]}.
 	reg p1_x_enable, p1_y_enable, p2_x_enable, p2_y_enable;	// enable signals for player movement.
 	reg p1_ic_start, p2_ic_start;										// start signals for invincibility counters.
+	reg destroy_tile;
 	
 	wire [17:0] bomb_info;
 	wire [8:0] p1_X, p1_Y, p2_X, p2_Y;
@@ -44,10 +45,10 @@ module bomberman_datapath(
 	assign all_tiles_drawn = (all_tiles_counted_x & all_tiles_counted_y);
 	
 	// limits for invincibility length, player speed, maximum number of bombs, explosion radius and potency.
-	wire [1:0] invincibility_length;
-	wire speed_limit;
-	wire bomb_limit, radius_limit, potency_limit;
-	assign invincibility_length = 2'd2; 							// set invincibility length of players to 2s.
+	wire [3:0] speed_limit;
+	wire [1:0] inv_length;
+	wire [1:0] bomb_limit, radius_limit, potency_limit;
+	assign inv_length = 2'd2; 							// set invincibility length of players to 2s.
 	assign speed_limit = 4'd8;											// set speed limit to (8 * 4) pixels per second.
 	assign bomb_limit = 2'd2; 											// set bomb limit to 3 per player (0 means 1).
 	assign radius_limit = 2'd2; 										// set explosion radius limit to 3 tiles per player.
@@ -62,7 +63,7 @@ module bomberman_datapath(
 		.max_coord(9'd232),
 		.increment(p1_speed),
 		.clock(refresh),
-		.reset(player_reset),
+		.reset(game_reset),
 		.enable(p1_x_enable),
 		.direction(p1_xdir)
 		);
@@ -74,7 +75,7 @@ module bomberman_datapath(
 		.max_coord(9'd192),
 		.increment(p1_speed),
 		.clock(refresh),
-		.reset(player_reset),
+		.reset(game_reset),
 		.enable(p1_y_enable),
 		.direction(p1_ydir)
 		);
@@ -88,7 +89,7 @@ module bomberman_datapath(
 		.max_coord(9'd232),
 		.increment(p2_speed),
 		.clock(refresh),
-		.reset(player_reset),
+		.reset(game_reset),
 		.enable(p2_x_enable),
 		.direction(p2_xdir)
 		);
@@ -100,7 +101,7 @@ module bomberman_datapath(
 		.max_coord(9'd192),
 		.increment(p2_speed),
 		.clock(refresh),
-		.reset(player_reset),
+		.reset(game_reset),
 		.enable(p2_y_enable),
 		.direction(p2_ydir)
 		);
@@ -123,30 +124,31 @@ module bomberman_datapath(
 		
 	invincibility_counter ic_p1(
 		.is_invincible(p1_is_invincible),
-		.length(p1_length),
+		.length(inv_length),
 		.clock(clock),
-		.reset(reset),
+		.reset(game_reset),
 		.start(p1_ic_start)
 		);
 	
 	invincibility_counter ic_p2(
 		.is_invincible(p2_is_invincible),
-		.length(p2_length),
+		.length(inv_length),
 		.clock(clock),
-		.reset(reset),
+		.reset(game_reset),
 		.start(p2_ic_start)
 		);	
 	
 	bomb b0(
 		.clk(clock),
 		.reset(reset),
-		.tile_reset(tile_reset),
+		.tile_reset(game_reset),
 		.X(bomb_X),
 		.Y(bomb_Y),
 		.statsP1(statsP1),
 		.statsP2(statsP2),
 		.placeP1((p1_bomb & read_input)),
 		.placeP2((p2_bomb & read_input)),
+		.destroy_tile(destroy_tile),
 		.bomb_id(bomb_id),
 		.bomb_info(bomb_info),
 		.has_explosion(has_explosion),
@@ -170,9 +172,9 @@ module bomberman_datapath(
 		);
 	
 	// player coordinate logic.
-	always @ (posedge clock, posedge reset)
+	always @ (posedge clock, posedge reset, posedge game_reset)
 		begin
-			if (reset)
+			if (reset | game_reset)
 				begin
 					p1_x_enable <= 0;
 					p1_y_enable <= 0;
@@ -201,22 +203,23 @@ module bomberman_datapath(
 		end
 			
 	// player health and bomb_XY logic.
-	always @ (posedge clock, posedge reset, posedge player_reset)
+	always @ (posedge clock, posedge reset, posedge game_reset)
 		begin
-			if (reset)
+			if (reset | game_reset)
 				begin
 					bomb_X <= 9'd0;
 					bomb_Y <= 8'd0;
+					statsP1 <= 6'd0;
+					statsP2 <= 6'd0;
 					p1_lives <= 2'd3;
 					p2_lives <= 2'd3;
-					p1_is_empty <= 4'd0;
-					p1_ic_start <= 0;
-					p2_ic_start <= 0;
-				end
-			else if (player_reset)
-				begin
-					p1_lives <= 2'd3;
-					p2_lives <= 2'd3;
+					p1_speed <= 2'd4;
+					p2_speed <= 2'd4;
+					p1_is_passable <= 4'd0;
+					p2_is_passable <= 4'd0;
+					destroy_tile <= 1'd0;
+					p1_ic_start <= 1'd0;
+					p2_ic_start <= 1'd0;
 				end
 			else if (draw_tile)
 				begin
@@ -250,21 +253,21 @@ module bomberman_datapath(
 								p1_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
 								if (statsP1 [5:4] < bomb_limit) 		// only increase if less than limit, do nothing otherwise.
-									statsP1 [5:4] <= statsP1 [5:4] + 1;
+									statsP1 [5:4] <= statsP1 [5:4] + 1'd1;
 							end
 						4'd4: // explosion radius power up.
 							begin
 								p1_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
 								if (statsP1 [3:2] < radius_limit) 	// only increase if less than limit, do nothing otherwise.
-									statsP1 [3:2] <= statsP1 [3:2] + 1;
+									statsP1 [3:2] <= statsP1 [3:2] + 1'd1;
 							end
 						4'd5: // explosion potency power up.
 							begin
 								p1_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
 								if (statsP1 [1:0] < potency_limit) 	// only increase if less than limit, do nothing otherwise.
-									statsP1 [1:0] <= statsP1 [1:0] + 1;
+									statsP1 [1:0] <= statsP1 [1:0] + 1'd1;
 							end
 						4'd6: // throw bomb power up.
 							begin
@@ -335,21 +338,21 @@ module bomberman_datapath(
 								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
 								if (statsP2 [5:4] < bomb_limit) 		// only increase if less than limit, do nothing otherwise.
-									statsP2 [5:4] <= statsP2 [5:4] + 1;
+									statsP2 [5:4] <= statsP2 [5:4] + 1'd1;
 							end
 						4'd4: // explosion radius power up.
 							begin
 								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
 								if (statsP2 [3:2] < radius_limit) 	// only increase if less than limit, do nothing otherwise.
-									statsP2 [3:2] <= statsP2 [3:2] + 1;
+									statsP2 [3:2] <= statsP2 [3:2] + 1'd1;
 							end
 						4'd5: // explosion potency power up.
 							begin
 								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
 								if (statsP2 [1:0] < potency_limit) 	// only increase if less than limit, do nothing otherwise.
-									statsP2 [1:0] <= statsP2 [1:0] + 1;
+									statsP2 [1:0] <= statsP2 [1:0] + 1'd1;
 							end
 						4'd6: // throw bomb power up.
 							begin
