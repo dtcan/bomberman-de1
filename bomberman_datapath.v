@@ -18,7 +18,7 @@ module bomberman_datapath(
 	input copy_enable, tc_enable,
 	input player_reset, tile_reset,
 	input draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
-	input refresh, print_screen,
+	input refresh, print_screen, read_input,
 	
 	// signals from keyboard.
 	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
@@ -28,10 +28,12 @@ module bomberman_datapath(
 	); 
 	
 	reg [8:0] copy_X, copy_Y, bomb_X, bomb_Y;
-	reg [3:0] tile_select, p1_is_passable, p2_is_passable;
-	reg [3:0] p1_speed, p2_speed; // Player speed stats.
-	reg [3:0] statsP1, statsP2; 	// Player powerup stats, format is {num_bombs[1:0], radius[1:0], potency[1:0]}.
-	reg p1_x_enable, p1_y_enable, p2_x_enable, p2_y_enable, p1_ic_start, p2_ic_start;
+	reg [3:0] tile_select; 
+	reg [3:0] p1_is_passable, p2_is_passable; 					// keeps track of whether corner tiles of each player are passable.
+	reg [3:0] p1_speed, p2_speed; 									// Player speed stats.
+	reg [3:0] statsP1, statsP2; 										// Player powerup stats, format is {num_bombs[1:0], radius[1:0], potency[1:0]}.
+	reg p1_x_enable, p1_y_enable, p2_x_enable, p2_y_enable;	// enable signals for player movement.
+	reg p1_ic_start, p2_ic_start;										// start signals for invincibility counters.
 	
 	wire [17:0] bomb_info;
 	wire [8:0] p1_X, p1_Y, p2_X, p2_Y;
@@ -45,11 +47,11 @@ module bomberman_datapath(
 	wire [1:0] invincibility_length;
 	wire speed_limit,
 	wire bomb_limit, radius_limit, potency_limit;
-	assign invincibility_length = 2'd2; // set invincibility length of players to 2s.
-	assign speed_limit = 4'd8;				// set speed limit to (8 * 4) pixels per second.
-	assign bomb_limit = 2'd2; 				// set bomb limit to 3 per player (0 means 1).
-	assign radius_limit = 2'd2; 			// set explosion radius limit to 3 tiles per player.
-	assign potency_limit = 2'd2; 			// set explosion potency limit to 3 seconds per player.
+	assign invincibility_length = 2'd2; 							// set invincibility length of players to 2s.
+	assign speed_limit = 4'd8;											// set speed limit to (8 * 4) pixels per second.
+	assign bomb_limit = 2'd2; 											// set bomb limit to 3 per player (0 means 1).
+	assign radius_limit = 2'd2; 										// set explosion radius limit to 3 tiles per player.
+	assign potency_limit = 2'd2; 										// set explosion potency limit to 3 seconds per player.
 	
 	// P1
 
@@ -178,7 +180,7 @@ module bomberman_datapath(
 					p2_y_enable <= 0;
 				end
 			else
-				begin
+				begin // check corners with respect to movement.
 					if (p1_xdir)
 						p1_x_enable <= (p1_is_passable[1] & p1_is_passable[3] & p1_xmov) ? 1'd1 : 1'd0;
 					else if (!p1_xdir)
@@ -306,83 +308,92 @@ module bomberman_datapath(
 							end
 						default:
 							begin
-								p1_is_passable [corner_id] <= 1'd0;
+								p1_is_passable [corner_id] <= 1'd0;	// all other tiles are impassable.
 								destroy_tile <= 1'd0;
 							end
 					endcase
 				end
 			else if (check_p2)
 				begin
+					bomb_X <= p2_X + (9'd15 * corner_id [0]);
+					bomb_Y <= p2_Y + (9'd15 * corner_id [1]);
+					if (has_explosion & !p2_is_invincible)
+						begin
+							p2_lives <= p2_lives - 1'd1;
+							p2_ic_start <= 1'd1;
+						end
+					else if (p2_ic_start)
+						p2_ic_start <= 1'd0;
 					case (map_tile_id)
 						4'd0: // empty tile.
 							begin
-								p1_is_passable [corner_id] <= 1'd1;
+								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd0;
 							end
 						4'd3: // extra bomb power up.
 							begin
-								p1_is_passable [corner_id] <= 1'd1;
+								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
-								if (statsP1 [5:4] < bomb_limit) 		// only increase if less than limit, do nothing otherwise.
-									statsP1 [5:4] <= statsP1 [5:4] + 1;
+								if (statsP2 [5:4] < bomb_limit) 		// only increase if less than limit, do nothing otherwise.
+									statsP2 [5:4] <= statsP2 [5:4] + 1;
 							end
 						4'd4: // explosion radius power up.
 							begin
-								p1_is_passable [corner_id] <= 1'd1;
+								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
-								if (statsP1 [3:2] < radius_limit) 	// only increase if less than limit, do nothing otherwise.
-									statsP1 [3:2] <= statsP1 [3:2] + 1;
+								if (statsP2 [3:2] < radius_limit) 	// only increase if less than limit, do nothing otherwise.
+									statsP2 [3:2] <= statsP2 [3:2] + 1;
 							end
 						4'd5: // explosion potency power up.
 							begin
-								p1_is_passable [corner_id] <= 1'd1;
+								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
-								if (statsP1 [1:0] < potency_limit) 	// only increase if less than limit, do nothing otherwise.
-									statsP1 [1:0] <= statsP1 [1:0] + 1;
+								if (statsP2 [1:0] < potency_limit) 	// only increase if less than limit, do nothing otherwise.
+									statsP2 [1:0] <= statsP2 [1:0] + 1;
 							end
 						4'd6: // throw bomb power up.
 							begin
-								p1_is_passable [corner_id] <= 1'd1;
+								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
 								// TODO
 							end
 						4'd7: // extra life power up.
 							begin
-								p1_is_passable [corner_id] <= 1'd1;
+								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
-								if (p1_lives < 2'd2)						// only increase if less than limit, do nothing otherwise.
-									p1_lives <= p1_lives + 1'd1;	
+								if (p2_lives < 2'd2)						// only increase if less than limit, do nothing otherwise.
+									p2_lives <= p2_lives + 1'd1;	
 							end
 						4'd8: // player speed power up.
 							begin
-								p1_is_passable [corner_id] <= 1'd1;
+								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd1;					// remove power up tile from game stage.
-								if (p1_speed < speed_limit)			// only increase if less than limit, do nothing otherwise.
-									p1_speed < p1_speed + 1'd1;
+								if (p2_speed < speed_limit)			// only increase if less than limit, do nothing otherwise.
+									p2_speed < p2_speed + 1'd1;
 							end
 						4'd12: // P1 sprite.
 							begin
-								p1_is_passable [corner_id] <= 1'd1;
+								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd0;
 							end
 						4'd13: // P2 sprite.
 							begin
-								p1_is_passable [corner_id] <= 1'd1;
+								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd0;
 							end
 						4'd14: // P1 sprite (inv).
 							begin
-								p1_is_passable [corner_id] <= 1'd1;
+								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd0;
 							end
 						4'd15: // P2 sprite (inv).
 							begin
-								p1_is_passable [corner_id] <= 1'd1;
+								p2_is_passable [corner_id] <= 1'd1;
 								destroy_tile <= 1'd0;
 							end
 						default:
 							begin
-								p1_is_passable [corner_id] <= 1'd0;
+								p2_is_passable [corner_id] <= 1'd0;	// all other tiles are impassable.
 								destroy_tile <= 1'd0;
 							end
 					endcase

@@ -6,7 +6,7 @@ module bomberman_control(
 	output reg copy_enable, tc_enable,
 	output reg player_reset, tile_reset,
 	output reg draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
-	output reg print_screen,
+	output reg print_screen, read_input,
 	output [2:0] bomb_id,
 	output [1:0] p1_hp_id, p2_hp_id, corner_id,
 	output refresh, // maybe let datapath have it's own internal clock
@@ -127,7 +127,6 @@ module bomberman_control(
 				DRAW_BOMB:				next_state = finished 			? UPDATE_BOMB : DRAW_BOMB;		 			// loop in DRAW_BOMB until finished drawing current bomb.
 				UPDATE_BOMB:			next_state = all_bombs_drawn	? CHECK_P1_CORNER : DRAW_BOMB; 			// loop back to DRAW_BOMB until finished drawing all bombs.
 				CHECK_P1_CORNER:		next_state = UPDATE_P1_CORNER;										 	
-//				DESTROY_P1_CORNER:
 				UPDATE_P1_CORNER:		next_state = all_checked		? DRAW_P1 : CHECK_P1_CORNER;	 			// loop back to CHECK_P1_CORNER until all 4 corners are checked.
 				DRAW_P1:					next_state = finished			? DRAW_P1_HP : DRAW_P1;	 		 			// loop in DRAW_P1 until finished drawing Player 1's sprite.
 				DRAW_P1_HP:				next_state = finished			? UPDATE_P1_HP : DRAW_P1_HP;	 			// loop in DRAW_P1_HP until finished drawing current P1's HP.
@@ -186,6 +185,7 @@ module bomberman_control(
 			cc_enable = 0;
 			
 			print_screen = 0;
+			read_input = 0;
 			
 			case (current_state)
 				LOAD_TITLE:
@@ -334,6 +334,7 @@ module bomberman_control(
 				UPDATE_STAGE:
 					begin
 						print_screen = 1;
+						read_input = 1;
 					end
 					
 				LOAD_WIN_SCREEN:
