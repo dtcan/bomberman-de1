@@ -1,4 +1,6 @@
-module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bomb_id, bomb_info, has_explosion, map_tile_id);
+module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, destroy_tile, bomb_id, bomb_info, has_explosion, map_tile_id);
+	
+	// TODO: Implement num_bombs and bomb throw powerup
 	
 	input clk;                          // 50Mhz clock
 	input reset;                        // Active-high reset
@@ -7,8 +9,9 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	input [7:0] Y;
 	
 	// Signals for bomb placing
-	input [3:0] statsP1, statsP2;       // Player powerup stats, format is {radius{1:0], potency[1:0]}
+	input [3:0] statsP1, statsP2;       // Player powerup stats, format is {num_bombs[1:0], radius[1:0], potency[1:0]}
 	input placeP1, placeP2;             // Bomb is placed at (X, Y) on posedge of this signal
+	input destroy_tile;                 // Destroy the tile at (X, Y)
 	
 	// Signals for bomb drawing
 	input [2:0] bomb_id;                // Bomb identifier, in range [0,5]
@@ -23,6 +26,7 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	// Game stage grids
 	reg [3:0] init_stage [0:120];
 	reg [3:0] game_stage [0:120];
+	reg [1:0] bomb_stage [0:120];
 	initial $readmemh("game_stage_1.mem", init_stage);
 	
 	wire true_reset;
@@ -141,141 +145,117 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, bo
 	// Update game stage
 	integer i = 0;
 	integer k = 0;
+	integer m = 0;
+	integer n = 0;
 	always @(posedge clk)
 	begin
 		if(true_reset) // Reset block
 		begin
 			for(i = 0; i < 121; i = i + 1)
+			begin
+				bomb_stage[i] <= 0;
+				
 				if(init_stage[i] < 2)
 					game_stage[i] <= init_stage[i];
 				else
+				begin
 					game_stage[i] <= 2;
-		end /*
+					if(init_stage[i] == 2)
+						init_stage[i] <= 0;
+				end
+			end
+		end
 		else
 		begin
-			for(k = 0; k < 6; k = k + 1) // Check every counter, if 0 then reset bomb and destroy blocks 
+			for(k = 0; k < 6; k = k + 1)
 			begin
 				if(bomb_died[k])
+					bomb_stage[bomb_index[k]] <= bomb_reg[k][2:1] + 1;
+				else
+					bomb_stage[bomb_index[k]] <= 0;
+			end
+			
+			for(m = 0; m < 11; m = m + 1)
+			begin
+				for(n = 0; n < 11; n = n + 1)
 				begin
-					// Radius 1
-					if((bomb_index[k] + 1) <= 10)
+					if(game_stage[(m * 11) + n] == 2)
 					begin
-						if((game_stage[bomb_index[k] + 1] == 2) &
-							(init_stage[bomb_index[k] + 1] != 2))
-							game_stage[bomb_index[k] + 1] <= init_stage[bomb_index[k] + 1];
-						else
-							game_stage[bomb_index[k] + 1] <= 0;
-					end
-					
-					if((bomb_index[k] - 1) <= 10)
-					begin
-						if((game_stage[bomb_index[k] - 1] == 2) &
-							(init_stage[bomb_index[k] - 1] != 2))
-							game_stage[bomb_index[k] - 1] <= init_stage[bomb_index[k] - 1];
-						else
-							game_stage[bomb_index[k] - 1] <= 0;
-					end
-					
-					if((bomb_index[k] + 11) <= 10)
-					begin
-						if((game_stage[bomb_index[k] + 11] == 2) &
-							(init_stage[bomb_index[k] + 11] != 2))
-							game_stage[bomb_index[k] + 11] <= init_stage[bomb_index[k] + 11];
-						else
-							game_stage[bomb_index[k] + 11] <= 0;
-					end
-					
-					if((bomb_index[k] - 11) <= 10)
-					begin
-						if((game_stage[bomb_index[k] - 11] == 2) &
-							(init_stage[bomb_index[k] - 11] != 2))
-							game_stage[bomb_index[k] - 11] <= init_stage[bomb_index[k] - 11];
-						else
-							game_stage[bomb_index[k] - 11] <= 0;
-					end
-					
-					// Radius 2
-					if(bomb_reg[k][4:3] >= 1)
-					begin
-						if((game_stage[bomb_index[k] + 1] == 0) & ((bomb_index[k] + 2) <= 10))
+						if(n < 10) // Right
 						begin
-							if((game_stage[bomb_index[k] + 2] == 2) &
-							   (init_stage[bomb_index[k] + 2] != 2))
-								game_stage[bomb_index[k] + 2] <= init_stage[bomb_index[k] + 2];
-							else
-								game_stage[bomb_index[k] + 2] <= 0;
+							if(bomb_stage[(m * 11) + n + 1] >= 1)
+								game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+							
+							if((n < 9) & (game_stage[(m * 11) + n + 1] == 0))
+							begin								
+								if(bomb_stage[(m * 11) + n + 2] >= 2)
+									game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								
+								if((n < 8) & (game_stage[(m * 11) + n + 2] == 0))
+								begin									
+									if(bomb_stage[(m * 11) + n + 3] >= 3)
+										game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								end
+							end
 						end
 						
-						if((game_stage[bomb_index[k] - 1] == 0) & ((bomb_index[k] - 2) <= 10))
+						if(n > 0) // Left
 						begin
-							if((game_stage[bomb_index[k] - 2] == 2) &
-							   (init_stage[bomb_index[k] - 2] != 2))
-								game_stage[bomb_index[k] - 2] <= init_stage[bomb_index[k] - 2];
-							else
-								game_stage[bomb_index[k] - 2] <= 0;
+							if(bomb_stage[(m * 11) + n - 1] >= 1)
+								game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+							
+							if((n > 1) & (game_stage[(m * 11) + n - 1] == 0))
+							begin								
+								if(bomb_stage[(m * 11) + n - 2] >= 2)
+									game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								
+								if((n > 2) & (game_stage[(m * 11) + n - 2] == 0))
+								begin									
+									if(bomb_stage[(m * 11) + n - 3] >= 3)
+										game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								end
+							end
 						end
 						
-						if((game_stage[bomb_index[k] + 11] == 0) & ((bomb_index[k] + 22) <= 10))
+						if(m < 10) // Above
 						begin
-							if((game_stage[bomb_index[k] + 22] == 2) &
-							   (init_stage[bomb_index[k] + 22] != 2))
-								game_stage[bomb_index[k] + 22] <= init_stage[bomb_index[k] + 22];
-							else
-								game_stage[bomb_index[k] + 22] <= 0;
+							if(bomb_stage[(m * 11) + n + 11] >= 1)
+								game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+							
+							if((m < 9) & (game_stage[(m * 11) + n + 11] == 0))
+							begin								
+								if(bomb_stage[(m * 11) + n + 22] >= 2)
+									game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								
+								if((m < 8) & (game_stage[(m * 11) + n + 22] == 0))
+								begin									
+									if(bomb_stage[(m * 11) + n + 33] >= 3)
+										game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								end
+							end
 						end
 						
-						if((game_stage[bomb_index[k] - 11] == 0) & ((bomb_index[k] - 22) <= 10))
+						if(m > 0) // Below
 						begin
-							if((game_stage[bomb_index[k] - 22] == 2) &
-							   (init_stage[bomb_index[k] - 22] != 2))
-								game_stage[bomb_index[k] - 22] <= init_stage[bomb_index[k] - 22];
-							else
-								game_stage[bomb_index[k] - 22] <= 0;
-						end
-					end
-					
-					// Radius 3
-					if(bomb_reg[k][4:3] >= 2)
-					begin
-						if((game_stage[bomb_index[k] + 1] == 0) & (game_stage[bomb_index[k] + 2] == 0) & ((bomb_index[k] + 3) <= 10))
-						begin
-							if((game_stage[bomb_index[k] + 3] == 2) &
-							   (init_stage[bomb_index[k] + 3] != 2))
-								game_stage[bomb_index[k] + 3] <= init_stage[bomb_index[k] + 3];
-							else
-								game_stage[bomb_index[k] + 3] <= 0;
-						end
-						
-						if((game_stage[bomb_index[k] - 1] == 0) & (game_stage[bomb_index[k] - 2] == 0) & ((bomb_index[k] - 3) <= 10))
-						begin
-							if((game_stage[bomb_index[k] - 3] == 2) &
-							   (init_stage[bomb_index[k] - 3] != 2))
-								game_stage[bomb_index[k] - 3] <= init_stage[bomb_index[k] - 3];
-							else
-								game_stage[bomb_index[k] - 3] <= 0;
-						end
-						
-						if((game_stage[bomb_index[k] + 11] == 0) & (game_stage[bomb_index[k] + 22] == 0) & ((bomb_index[k] + 33) <= 10))
-						begin
-							if((game_stage[bomb_index[k] + 33] == 2) &
-							   (init_stage[bomb_index[k] + 33] != 2))
-								game_stage[bomb_index[k] + 33] <= init_stage[bomb_index[k] + 33];
-							else
-								game_stage[bomb_index[k] + 33] <= 0;
-						end
-						
-						if((game_stage[bomb_index[k] - 11] == 0) & (game_stage[bomb_index[k] - 22] == 0) & ((bomb_index[k] - 33) <= 10))
-						begin
-							if((game_stage[bomb_index[k] - 33] == 2) &
-							   (init_stage[bomb_index[k] - 33] != 2))
-								game_stage[bomb_index[k] - 33] <= init_stage[bomb_index[k] - 33];
-							else
-								game_stage[bomb_index[k] - 33] <= 0;
+							if(bomb_stage[(m * 11) + n - 11] >= 1)
+								game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+							
+							if((m > 1) & (game_stage[(m * 11) + n - 11] == 0))
+							begin								
+								if(bomb_stage[(m * 11) + n - 22] >= 2)
+									game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								
+								if((m > 2) & (game_stage[(m * 11) + n - 22] == 0))
+								begin									
+									if(bomb_stage[(m * 11) + n - 33] >= 3)
+										game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								end
+							end
 						end
 					end
 				end
 			end
-		end*/
+		end
 	end
 	
 	// Update has_explosion
