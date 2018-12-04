@@ -72,18 +72,6 @@ module bomberman_datapath(
 		.enable(p1_y_enable),
 		.direction(p1_ydir)
 		);
-		
-//	coordinate_counter player_1_hp_X(
-//		.next_coord(p1_hp_X),
-//		.start_coord(9'd8),
-//		.min_coord(9'd0),
-//		.max_coord(9'd48),
-//		.increment(9'd20),
-//		.clock(clock),
-//		.reset(p_hpcc_reset),
-//		.enable(P1_hpcc_enable),
-//		.direction(1)
-//		);
 
 	// P2
 		
@@ -110,18 +98,6 @@ module bomberman_datapath(
 		.enable(p2_y_enable),
 		.direction(p2_ydir)
 		);
-		
-//	coordinate_counter player_2_hp_X(
-//		.next_coord(p2_hp_X),
-//		.start_coord(9'd256),
-//		.min_coord(9'd248),
-//		.max_coord(9'd296),
-//		.increment(9'd20),
-//		.clock(clock),
-//		.reset(p_hpcc_reset),
-//		.enable(P2_hpcc_enable),
-//		.direction(1)
-//		);
 	
 	tile_counter tc_x(
 		.tile_count(tile_count_x),
@@ -475,29 +451,6 @@ module coordinate_counter(
 		
 endmodule
 
-//// counter module for lives.
-//// active high reset.
-//module lives_counter(has_died, lives, clock, reset, enable);
-//	
-//	output out;
-//	
-//	input [1:0] lives;
-//	input clock, reset, enable;
-//	
-//	always @(posedge clock, posedge reset)
-//		begin
-//			if (reset)
-//				lives <= 2'd3;
-//			else if (enable)
-//				begin
-//					
-//				end
-//		end
-//	
-//	assign has_died = (lives == 2'd0) ? 1 : 0;
-//	
-//endmodule				
-
 // counter module for cycling through game stage memory file.
 // active-high reset.
 module tile_counter(tile_count, all_tiles_counted, clock, reset, enable);
@@ -543,7 +496,7 @@ module invincibility_counter(is_invincible, length, clock, reset, start);
 			else if (start)
 				count <= 52'd1;
 			else if (count != 52'd0)
-				count <= count + 52d'1;
+				count <= count + 52'd1;
 			else if (count == (52'd50000000 * length - 1))
 				count <= 52'd0;
 		end
