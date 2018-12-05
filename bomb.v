@@ -9,7 +9,7 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 	input [7:0] Y;
 	
 	// Signals for bomb placing
-	input [3:0] statsP1, statsP2;       // Player powerup stats, format is {num_bombs[1:0], radius[1:0], potency[1:0]}
+	input [5:0] statsP1, statsP2;       // Player powerup stats, format is {num_bombs[1:0], radius[1:0], potency[1:0]}
 	input placeP1, placeP2;             // Bomb is placed at (X, Y) on posedge of this signal
 	input destroy_tile;                 // Destroy the tile at (X, Y)
 	
@@ -67,7 +67,7 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 		.place(placeP1 & ~(|bomb_exists)),
 		.tX(rtX),
 		.tY(rtY),
-		.stats(statsP1),
+		.stats(statsP1[3:0]),
 		.bomb_reg(bomb_reg[0]),
 		.tile_index(bomb_index[0]),
 		.exists(bomb_exists[0]),
@@ -77,10 +77,10 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 	solo_bomb b1(
 		.clk(clk),
 		.reset(true_reset),
-		.place(placeP1 & ~(|bomb_exists) & bomb_reg[0]),
+		.place(placeP1 & ~(|bomb_exists) & bomb_reg[0] & (statsP1[5:4] >= 1)),
 		.tX(rtX),
 		.tY(rtY),
-		.stats(statsP1),
+		.stats(statsP1[3:0]),
 		.bomb_reg(bomb_reg[1]),
 		.tile_index(bomb_index[1]),
 		.exists(bomb_exists[1]),
@@ -90,10 +90,10 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 	solo_bomb b2(
 		.clk(clk),
 		.reset(true_reset),
-		.place(placeP1 & ~(|bomb_exists) & bomb_reg[0] & bomb_reg[1]),
+		.place(placeP1 & ~(|bomb_exists) & bomb_reg[0] & bomb_reg[1] & (statsP1[5:4] >= 2)),
 		.tX(rtX),
 		.tY(rtY),
-		.stats(statsP1),
+		.stats(statsP1[3:0]),
 		.bomb_reg(bomb_reg[2]),
 		.tile_index(bomb_index[2]),
 		.exists(bomb_exists[2]),
@@ -108,7 +108,7 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 		.place(placeP2 & ~(|bomb_exists)),
 		.tX(rtX),
 		.tY(rtY),
-		.stats(statsP2),
+		.stats(statsP2[3:0]),
 		.bomb_reg(bomb_reg[3]),
 		.tile_index(bomb_index[3]),
 		.exists(bomb_exists[3]),
@@ -118,10 +118,10 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 	solo_bomb b4(
 		.clk(clk),
 		.reset(true_reset),
-		.place(placeP2 & ~(|bomb_exists) & bomb_reg[3]),
+		.place(placeP2 & ~(|bomb_exists) & bomb_reg[3] & (statsP2[5:4] >= 1)),
 		.tX(rtX),
 		.tY(rtY),
-		.stats(statsP2),
+		.stats(statsP2[3:0]),
 		.bomb_reg(bomb_reg[4]),
 		.tile_index(bomb_index[4]),
 		.exists(bomb_exists[4]),
@@ -131,10 +131,10 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 	solo_bomb b5(
 		.clk(clk),
 		.reset(true_reset),
-		.place(placeP2 & ~(|bomb_exists) & bomb_reg[3] & bomb_reg[4]),
+		.place(placeP2 & ~(|bomb_exists) & bomb_reg[3] & bomb_reg[4] & (statsP2[5:4] >= 2)),
 		.tX(rtX),
 		.tY(rtY),
-		.stats(statsP2),
+		.stats(statsP2[3:0]),
 		.bomb_reg(bomb_reg[5]),
 		.tile_index(bomb_index[5]),
 		.exists(bomb_exists[5]),
@@ -179,7 +179,9 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 			begin
 				for(n = 0; n < 11; n = n + 1)
 				begin
-					if(game_stage[(m * 11) + n] == 2)
+					if((tX == n) & (tY == m) & destroy_tile)
+						game_stage[(m * 11) + n] <= 0;
+					else if(game_stage[(m * 11) + n] == 2)
 					begin
 						if(n < 10) // Right
 						begin
