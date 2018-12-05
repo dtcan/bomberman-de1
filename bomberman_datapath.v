@@ -18,7 +18,7 @@ module bomberman_datapath(
 	input copy_enable, tc_enable,
 	input game_reset,
 	input draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
-	input refresh, print_screen, read_input,
+	input black, refresh, print_screen, read_input,
 	
 	// signals from keyboard.
 	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
@@ -164,6 +164,7 @@ module bomberman_datapath(
 		.Y(copy_Y),
 		.memory_select(memory_select),
 		.tile_select(tile_select),
+		.black(black),
 		.X_out(X_out),
 		.Y_out(Y_out),
 		.colour(colour),
@@ -213,8 +214,8 @@ module bomberman_datapath(
 					statsP2 <= 6'd0;
 					p1_lives <= 2'd3;
 					p2_lives <= 2'd3;
-					p1_speed <= 2'd4;
-					p2_speed <= 2'd4;
+					p1_speed <= 4'd4;
+					p2_speed <= 4'd4;
 					p1_is_passable <= 4'd0;
 					p2_is_passable <= 4'd0;
 					destroy_tile <= 1'd0;

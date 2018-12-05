@@ -48,7 +48,7 @@ module bomberman
 	wire [1:0] p1_lives, p2_lives;
 	wire copy_enable, tc_enable, game_reset;
 	wire draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp;
-	wire refresh, print_screen, read_input;
+	wire black, refresh, print_screen, read_input;
 	wire finished, all_tiles_drawn;
 	
 	// wires for datapath/VGA inputs/ outputs.
@@ -125,6 +125,7 @@ module bomberman
 		.p1_hp_id(p1_hp_id),
 		.p2_hp_id(p2_hp_id),
 		.corner_id(corner_id),
+		.black(black),
 		.refresh(refresh),
 		.print_screen(print_screen),
 		.read_input(read_input),
@@ -166,6 +167,7 @@ module bomberman
 		.check_p2(check_p2),
 		.draw_p2(draw_p2),
 		.draw_p2_hp(draw_p2_hp),
+		.black(black),
 		.refresh(refresh),
 		.print_screen(print_screen),
 		.read_input(read_input),

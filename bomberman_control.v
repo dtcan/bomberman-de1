@@ -6,7 +6,7 @@ module bomberman_control(
 	output reg copy_enable, tc_enable,
 	output reg game_reset,
 	output reg draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
-	output reg print_screen, read_input,
+	output reg black, print_screen, read_input,
 	output [2:0] bomb_id,
 	output [1:0] p1_hp_id, p2_hp_id, corner_id,
 	output refresh, // maybe let datapath have it's own internal clock
@@ -42,9 +42,9 @@ module bomberman_control(
 	// how often to redraw objects (for now moving sprites 4 times/ second)
 	frame_counter fc(
 		.out(refresh),
-		.clock(clock_60Hz),
+		.clock(clock),
 		.reset((reset | dc_reset)),
-		.enable(dc_enable)
+		.enable(clock_60Hz)
 		);
 	
 	bomb_counter bc(
@@ -58,7 +58,7 @@ module bomberman_control(
 	counter lc_p1(
 		.count(p1_hp_id),
 		.out(all_P1HP_drawn),
-		.count_to((p1_lives - 2'd1)),
+		.count_to(2'd2), // (p1_lives - 2'd1)
 		.clock(clock),
 		.reset((reset | lc_reset)),
 		.enable(lc_p1_enable)
@@ -67,7 +67,7 @@ module bomberman_control(
 	counter lc_p2(
 		.count(p2_hp_id),
 		.out(all_P2HP_drawn),
-		.count_to((p2_lives - 2'd1)),
+		.count_to(2'd2), // (p2_lives - 2'd1)
 		.clock(clock),
 		.reset((reset | lc_reset)),
 		.enable(lc_p2_enable)
@@ -172,6 +172,7 @@ module bomberman_control(
 			check_p2 = 0;
 			draw_p2 = 0;
 			draw_p2_hp = 0;
+			black = 0;
 			
 			dc_reset = 0;
 			dc_enable = 0;
@@ -280,6 +281,10 @@ module bomberman_control(
 						memory_select = 2'd3;
 						copy_enable = 1;
 						draw_p1_hp = 1;
+						if (p1_hp_id >= p1_lives)
+							black = 1;
+						else
+							black = 0;
 						dc_enable = 1;
 					end
 					
@@ -315,6 +320,10 @@ module bomberman_control(
 						memory_select = 2'd3;
 						copy_enable = 1;
 						draw_p2_hp = 1;
+						if (p2_hp_id >= p2_lives)
+							black = 1;
+						else
+							black = 0;
 						dc_enable = 1;
 					end
 					
@@ -390,7 +399,7 @@ module delay_counter(clock_60Hz, clock, reset, enable);
 		end
 		
 	// sends high out signal ~60 times per second. 
-	assign clock_60Hz = (count == 20'd0)? 1'd1 : 1'd0;
+	assign clock_60Hz = (count == 20'd833332)? 1'd1 : 1'd0;
 
 endmodule
 
