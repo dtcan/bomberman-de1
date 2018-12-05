@@ -35,7 +35,7 @@ module bomberman_control(
 	delay_counter dc(
 		.clock_60Hz(clock_60Hz),
 		.clock(clock),
-		.reset(dc_reset),
+		.reset((reset | dc_reset)),
 		.enable(dc_enable)
 		);
 	
@@ -43,7 +43,7 @@ module bomberman_control(
 	frame_counter fc(
 		.out(refresh),
 		.clock(clock_60Hz),
-		.reset(dc_reset),
+		.reset((reset | dc_reset)),
 		.enable(dc_enable)
 		);
 	
@@ -51,7 +51,7 @@ module bomberman_control(
 		.count(bomb_id),
 		.out(all_bombs_drawn),
 		.clock(clock),
-		.reset(bc_reset),
+		.reset((reset | bc_reset)),
 		.enable(bc_enable)
 		);
 		
@@ -60,7 +60,7 @@ module bomberman_control(
 		.out(all_P1HP_drawn),
 		.count_to((p1_lives - 2'd1)),
 		.clock(clock),
-		.reset(lc_reset),
+		.reset((reset | lc_reset)),
 		.enable(lc_p1_enable)
 		);
 	
@@ -69,7 +69,7 @@ module bomberman_control(
 		.out(all_P2HP_drawn),
 		.count_to((p2_lives - 2'd1)),
 		.clock(clock),
-		.reset(lc_reset),
+		.reset((reset | lc_reset)),
 		.enable(lc_p2_enable)
 		);
 		
@@ -78,7 +78,7 @@ module bomberman_control(
 		.out(all_checked),
 		.count_to(2'd3),
 		.clock(clock),
-		.reset(cc_reset),
+		.reset((reset | cc_reset)),
 		.enable(cc_enable)
 		);
 		
@@ -331,6 +331,7 @@ module bomberman_control(
 					
 				UPDATE_STAGE:
 					begin
+						dc_enable = 1;
 						print_screen = 1;
 						read_input = 1;
 					end
@@ -381,7 +382,7 @@ module delay_counter(clock_60Hz, clock, reset, enable);
 			// count to 833 333 - 1
 			else if (enable)
 				begin
-					if (count == 20'd833332)
+					if (count == 20'd833332) // change this to 833332 after testing
 						count <= 20'd0;
 					else
 						count <= count + 20'd1;
@@ -418,10 +419,11 @@ module frame_counter(out, clock, reset, enable);
 		end
 	
 	// sends high out signal 1 time every 15 frames.
-	assign out = (count == 4'd0)? 1'd1 : 1'd0;
+	assign out = (count == 4'd14)? 1'd1 : 1'd0;
 
 endmodule
 
+// TODO combine the following two modules.
 // counter module for 6 bombs.
 // active high reset.
 module bomb_counter(count, out, clock, reset, enable);
@@ -445,11 +447,11 @@ module bomb_counter(count, out, clock, reset, enable);
 				end
 		end
 		
-	assign out = (count == 3'd0) ? 1'd1 : 1'd0;
+	assign out = (count == 3'd5) ? 1'd1 : 1'd0;
 	
 endmodule
 
-// counter module that counts to count_to.
+// counter module that counts to count_to and sends finished signal when count is at count_to.
 // active high reset.
 module counter(count, out, count_to, clock, reset, enable);
 	
@@ -473,6 +475,6 @@ module counter(count, out, count_to, clock, reset, enable);
 				end
 		end
 	
-	assign out = (count == 2'd0) ? 1'd1 : 1'd0;
+	assign out = (count == count_to) ? 1'd1 : 1'd0;
 	
 endmodule
