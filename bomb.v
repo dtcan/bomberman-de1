@@ -158,11 +158,7 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 				if(init_stage[i] < 2)
 					game_stage[i] <= init_stage[i];
 				else
-				begin
 					game_stage[i] <= 2;
-					if(init_stage[i] == 2)
-						init_stage[i] <= 0;
-				end
 			end
 		end
 		else
@@ -186,17 +182,17 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 						if(n < 10) // Right
 						begin
 							if(bomb_stage[(m * 11) + n + 1] >= 1)
-								game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 							
 							if((n < 9) & (game_stage[(m * 11) + n + 1] == 0))
 							begin								
 								if(bomb_stage[(m * 11) + n + 2] >= 2)
-									game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+									game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 								
 								if((n < 8) & (game_stage[(m * 11) + n + 2] == 0))
 								begin									
 									if(bomb_stage[(m * 11) + n + 3] >= 3)
-										game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+										game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 								end
 							end
 						end
@@ -204,17 +200,17 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 						if(n > 0) // Left
 						begin
 							if(bomb_stage[(m * 11) + n - 1] >= 1)
-								game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 							
 							if((n > 1) & (game_stage[(m * 11) + n - 1] == 0))
 							begin								
 								if(bomb_stage[(m * 11) + n - 2] >= 2)
-									game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+									game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 								
 								if((n > 2) & (game_stage[(m * 11) + n - 2] == 0))
 								begin									
 									if(bomb_stage[(m * 11) + n - 3] >= 3)
-										game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+										game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 								end
 							end
 						end
@@ -222,17 +218,17 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 						if(m < 10) // Above
 						begin
 							if(bomb_stage[(m * 11) + n + 11] >= 1)
-								game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 							
 							if((m < 9) & (game_stage[(m * 11) + n + 11] == 0))
 							begin								
 								if(bomb_stage[(m * 11) + n + 22] >= 2)
-									game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+									game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 								
 								if((m < 8) & (game_stage[(m * 11) + n + 22] == 0))
 								begin									
 									if(bomb_stage[(m * 11) + n + 33] >= 3)
-										game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+										game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 								end
 							end
 						end
@@ -240,17 +236,17 @@ module bomb(clk, reset, tile_reset, X, Y, statsP1, statsP2, placeP1, placeP2, de
 						if(m > 0) // Below
 						begin
 							if(bomb_stage[(m * 11) + n - 11] >= 1)
-								game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+								game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 							
 							if((m > 1) & (game_stage[(m * 11) + n - 11] == 0))
 							begin								
 								if(bomb_stage[(m * 11) + n - 22] >= 2)
-									game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+									game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 								
 								if((m > 2) & (game_stage[(m * 11) + n - 22] == 0))
 								begin									
 									if(bomb_stage[(m * 11) + n - 33] >= 3)
-										game_stage[(m * 11) + n] <= init_stage[(m * 11) + n];
+										game_stage[(m * 11) + n] <= ((init_stage[(m * 11) + n] == 2) ? 0 : init_stage[(m * 11) + n]);
 								end
 							end
 						end
