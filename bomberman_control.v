@@ -9,7 +9,7 @@ module bomberman_control(
 	output reg set_p1, check_p1, set_p2, check_p2,
 	output reg black, print_screen, read_p1_input, send_p1_input, read_p2_input, send_p2_input,
 	output [2:0] bomb_id, corner_id,
-	output [1:0] p1_hp_id, p2_hp_id,
+	output [2:0] p1_hp_id, p2_hp_id,
 	output refresh, // maybe let datapath have it's own internal clock
 	
 	input [1:0] p1_lives, p2_lives,

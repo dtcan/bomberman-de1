@@ -14,7 +14,8 @@ module bomberman_datapath(
 	
 	// signals from control.
 	input [2:0] bomb_id, corner_id,
-	input [1:0] memory_select, p1_hp_id, p2_hp_id,
+	input [2:0] p1_hp_id, p2_hp_id,
+	input [1:0] memory_select,
 	input copy_enable, tc_enable,
 	input game_reset,
 	input draw_stage, draw_tile, draw_explosion, draw_bomb, draw_p1, draw_p1_hp, draw_p2, draw_p2_hp,
