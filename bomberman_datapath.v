@@ -217,8 +217,8 @@ module bomberman_datapath(
 					p2_lives <= 2'd3;
 					p1_speed <= 4'd4;
 					p2_speed <= 4'd4;
-					p1_is_passable <= 4'd0;
-					p2_is_passable <= 4'd0;
+					p1_is_passable <= 8'd0;
+					p2_is_passable <= 8'd0;
 					destroy_tile <= 1'd0;
 					p1_ic_start <= 1'd0;
 					p2_ic_start <= 1'd0;
@@ -227,6 +227,8 @@ module bomberman_datapath(
 				begin
 					bomb_X <= 9'd72 + {1'b0, tile_count_x, 4'b0000};
 					bomb_Y <= 8'd32 + {tile_count_y, 4'b0000};
+					p1_is_passable <= 8'd0;
+					p2_is_passable <= 8'd0;
 				end
 			else if (draw_explosion)
 				begin
@@ -587,10 +589,10 @@ module invincibility_counter(is_invincible, length, clock, reset, start);
 				count <= 52'd0;
 			else if (start)
 				count <= 52'd1;
-			else if (count != 52'd0)
-				count <= count + 52'd1;
 			else if (count == (52'd50000000 * length - 1))
 				count <= 52'd0;
+			else if (count != 52'd0)
+				count <= count + 52'd1;
 		end
 	
 	assign is_invincible = (count == 52'd0) ? 1'd0 : 1'd1;
