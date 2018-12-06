@@ -6,7 +6,7 @@ module bomberman_control(
 	output reg copy_enable, tc_enable,
 	output reg game_reset,
 	output reg draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
-	output reg black, print_screen, read_input,
+	output reg black, print_screen, read_input, send_input,
 	output [2:0] bomb_id, corner_id,
 	output [1:0] p1_hp_id, p2_hp_id,
 	output refresh, // maybe let datapath have it's own internal clock
@@ -111,11 +111,12 @@ module bomberman_control(
 					DRAW_P2_HP			 = 5'd18,// draw player 2's health.
 					UPDATE_P2_HP		 = 5'd19,// update player 2's health.
 					GAME_IDLE			 = 5'd20,// wait for delay.
-					UPDATE_STAGE		 = 5'd21,// draw stage to VGA.
+					READ_USER_INPUT	 = 5'd21,// get user input.
+					UPDATE_STAGE		 = 5'd22,// draw stage to VGA.
 					
-					LOAD_WIN_SCREEN	 = 5'd22,// draw win screen background to buffer.
-					DISPLAY_WIN_SCREEN = 5'd23,// draw win screen background to VGA.
-					WIN_SCREEN			 = 5'd24;// wait for user input to return to title screen.
+					LOAD_WIN_SCREEN	 = 5'd23,// draw win screen background to buffer.
+					DISPLAY_WIN_SCREEN = 5'd24,// draw win screen background to VGA.
+					WIN_SCREEN			 = 5'd25;// wait for user input to return to title screen.
 
 	// state table
 	always @ (*)
@@ -142,6 +143,7 @@ module bomberman_control(
 				DRAW_P2_HP:				next_state = finished			? UPDATE_P2_HP : DRAW_P2_HP;	 			// loop in DRAW_P2_HP until finished drawing current P2's HP.
 				UPDATE_P2_HP:			next_state = all_P2HP_drawn	? GAME_IDLE : DRAW_P2_HP;	 	 			// loop back to DRAW_P2_HP until finished drawing all P2's HPs.
 				GAME_IDLE:				next_state = clock_60Hz			? UPDATE_STAGE : GAME_IDLE;	 			// loop in GAME_IDLE until delay is complete. 
+				READ_USER_INPUT:		next_state = UPDATE_STAGE;
 				UPDATE_STAGE:																						 	 			// loop back to DRAW_TILE until a Player is killed after updating stage.
 					begin
 						if (game_over)
@@ -191,6 +193,7 @@ module bomberman_control(
 			
 			print_screen = 0;
 			read_input = 0;
+			send_input = 0;
 			
 			case (current_state)
 				LOAD_TITLE:
@@ -343,11 +346,17 @@ module bomberman_control(
 						dc_enable = 1;
 					end
 					
+				READ_USER_INPUT:
+					begin
+						dc_enable = 1;
+						read_input = 1;
+					end
+					
 				UPDATE_STAGE:
 					begin
 						dc_enable = 1;
 						print_screen = 1;
-						read_input = 1;
+						send_input = 1;
 					end
 					
 				LOAD_WIN_SCREEN:
