@@ -44,7 +44,8 @@ module bomberman
 	
 	// wires for control/datapath inputs/ outputs.
 	wire [2:0] bomb_id, corner_id;
-	wire [1:0] memory_select, p1_hp_id, p2_hp_id;
+	wire [2:0] p1_hp_id, p2_hp_id;
+	wire [1:0] memory_select;
 	wire [1:0] p1_lives, p2_lives;
 	wire copy_enable, tc_enable, game_reset;
 	wire draw_stage, draw_tile, draw_explosion, draw_bomb, draw_p1, draw_p1_hp, draw_p2, draw_p2_hp;

@@ -14,7 +14,8 @@ module bomberman_datapath(
 	
 	// signals from control.
 	input [2:0] bomb_id, corner_id,
-	input [1:0] memory_select, p1_hp_id, p2_hp_id,
+	input [2:0] p1_hp_id, p2_hp_id,
+	input [1:0] memory_select,
 	input copy_enable, tc_enable,
 	input game_reset,
 	input draw_stage, draw_tile, draw_explosion, draw_bomb, draw_p1, draw_p1_hp, draw_p2, draw_p2_hp,
@@ -494,7 +495,7 @@ module bomberman_datapath(
 						end
 					if (draw_p1_hp)
 						begin
-							copy_X <= 9'd8 + (9'd20 * p1_hp_id);
+							copy_X <= 9'd10 + (9'd18 * p1_hp_id);
 							copy_Y <= 8'd112;
 							tile_select <= 4'd9;
 						end
@@ -506,7 +507,7 @@ module bomberman_datapath(
 						end
 					if (draw_p2_hp)
 						begin
-							copy_X <= 9'd256 + (9'd20 * p2_hp_id);
+							copy_X <= 9'd258 + (9'd18 * p2_hp_id);
 							copy_Y <= 8'd112;
 							tile_select <= 4'd9;
 						end
