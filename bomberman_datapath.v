@@ -18,7 +18,7 @@ module bomberman_datapath(
 	input copy_enable, tc_enable,
 	input game_reset,
 	input draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
-	input black, refresh, print_screen, read_input,
+	input black, refresh, print_screen, read_input, send_input,
 	
 	// signals from keyboard.
 	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
@@ -28,9 +28,9 @@ module bomberman_datapath(
 	); 
 	
 	reg [8:0] copy_X, copy_Y, bomb_X, bomb_Y;
+	reg [7:0] p1_is_passable, p2_is_passable; 					// keeps track of whether corner tiles of each player are passable.
 	reg [5:0] statsP1, statsP2; 										// Player powerup stats, format is {num_bombs[1:0], radius[1:0], potency[1:0]}.
 	reg [3:0] tile_select; 
-	reg [3:0] p1_is_passable, p2_is_passable; 					// keeps track of whether corner tiles of each player are passable.
 	reg [3:0] p1_speed, p2_speed; 									// Player speed stats.
 	reg p1_x_enable, p1_y_enable, p2_x_enable, p2_y_enable;	// enable signals for player movement.
 	reg p1_ic_start, p2_ic_start;										// start signals for invincibility counters.
@@ -146,8 +146,8 @@ module bomberman_datapath(
 		.Y(bomb_Y),
 		.statsP1(statsP1),
 		.statsP2(statsP2),
-		.placeP1((p1_bomb & read_input)),
-		.placeP2((p2_bomb & read_input)),
+		.placeP1((p1_bomb & send_input)),
+		.placeP2((p2_bomb & send_input)),
 		.destroy_tile(destroy_tile),
 		.bomb_id(bomb_id),
 		.bomb_info(bomb_info),
@@ -185,21 +185,21 @@ module bomberman_datapath(
 			else
 				begin // check corners with respect to movement.
 					if (p1_xdir)
-						p1_x_enable <= (p1_is_passable[1] & p1_is_passable[3] & p1_xmov) ? 1'd1 : 1'd0;
+						p1_x_enable <= (p1_is_passable[6] & p1_is_passable[7] & p1_xmov) ? 1'd1 : 1'd0;
 					else if (!p1_xdir)
-						p1_x_enable <= (p1_is_passable[0] & p1_is_passable[2] & p1_xmov) ? 1'd1 : 1'd0;
+						p1_x_enable <= (p1_is_passable[4] & p1_is_passable[5] & p1_xmov) ? 1'd1 : 1'd0;
 					if (p1_ydir)
-						p1_y_enable <= (p1_is_passable[2] & p1_is_passable[3] & p1_ymov) ? 1'd1 : 1'd0;
-					else if (!p1_ydir)
 						p1_y_enable <= (p1_is_passable[0] & p1_is_passable[1] & p1_ymov) ? 1'd1 : 1'd0;
+					else if (!p1_ydir)
+						p1_y_enable <= (p1_is_passable[2] & p1_is_passable[3] & p1_ymov) ? 1'd1 : 1'd0;
 					if (p2_xdir)
-						p2_x_enable <= (p2_is_passable[1] & p2_is_passable[3] & p2_xmov) ? 1'd1 : 1'd0;
+						p2_x_enable <= (p2_is_passable[6] & p2_is_passable[7] & p2_xmov) ? 1'd1 : 1'd0;
 					else if (!p2_xdir)
-						p2_x_enable <= (p2_is_passable[0] & p2_is_passable[2] & p2_xmov) ? 1'd1 : 1'd0;
+						p2_x_enable <= (p2_is_passable[4] & p2_is_passable[5] & p2_xmov) ? 1'd1 : 1'd0;
 					if (p2_ydir)
-						p2_y_enable <= (p2_is_passable[2] & p2_is_passable[3] & p2_ymov) ? 1'd1 : 1'd0;
-					else if (!p2_ydir)
 						p2_y_enable <= (p2_is_passable[0] & p2_is_passable[1] & p2_ymov) ? 1'd1 : 1'd0;
+					else if (!p2_ydir)
+						p2_y_enable <= (p2_is_passable[2] & p2_is_passable[3] & p2_ymov) ? 1'd1 : 1'd0;
 				end
 		end
 			
