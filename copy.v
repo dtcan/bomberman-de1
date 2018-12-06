@@ -1,82 +1,69 @@
-module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, black, X_out, Y_out, colour, write_en, finished);
-	input clk, reset_n, go, refresh, black;
+module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, Y_out, colour, write_en, finished);
+	input clk, reset_n, go, refresh;
 	input [8:0] X;
 	input [7:0] Y;
 	input [1:0] memory_select;
 	input [3:0] tile_select;
 	output [8:0] X_out;
 	output [7:0] Y_out;
-	output [5:0] colour;
+	output reg [5:0] colour; // Remove reg keyword if using buffer
 	output reg write_en, finished;
 	
 	localparam WIDTH = 320, HEIGHT = 240; // Still have to go change bit-widths when changing these!
-	localparam BITS_PER_COLOUR = 2;       // When changing, also change colour wire widths
-	localparam TRANSPARENT = 6'b001100;   // Change this when changing BITS_PER_COLOUR
+	localparam BITS_PER_COLOUR = 2;       // When changing, also change colour reg and wire widths
 	
-	reg [5:0] colour_b;
+	// reg [5:0] colour_b;
 	wire [5:0] colour_1, colour_2, colour_3, colour_t;
 	wire [8:0] offset_x;
 	wire [7:0] offset_y;
 	wire [7:0] offset_t;
 	reg [16:0] offset;
-	reg enable_count, enable_hold;
-	reg write_buffer;
-	reg refreshing;
+	reg enable_count;
+	// reg write_buffer;
 	reg [16:0] adr;
-	wire [16:0] adr_b;
-	wire [1:0] hold;
+	// reg refreshing;
 	
 	assign X_out = X + offset[8:0];
 	assign Y_out = Y + offset[16:9];
-	assign adr_b = ((Y_out * WIDTH) + X_out);
 	
 	count8 c0(
 		.clk(clk),
 		.reset_n(reset_n),
-		.enable(enable_count & (memory_select == 2'b11) & ~refreshing),
+		.enable(enable_count & (memory_select == 2'b11)), // If using buffer, check refreshing signal
 		.q(offset_t)
 	);
 	
 	count_xy c1(
 		.clk(clk),
 		.reset_n(reset_n),
-		.enable(enable_count & ((memory_select != 2'b11) | refreshing)),
+		.enable(enable_count & (memory_select != 2'b11)), // If using buffer, check refreshing
 		.max_x(WIDTH),
 		.max_y(HEIGHT),
 		.q_x(offset_x),
 		.q_y(offset_y)
 	);
 	
-	count_hold c2(
-		.clk(clk),
-		.reset_n(reset_n),
-		.enable(enable_hold),
-		.q(hold)
-	);
-	
 	always @(*)
 	begin
-		reg [5:0] temp;
-		temp = 0;
-		case(memory_select)
-			2'b00: temp = colour_1;
-			2'b01: temp = colour_2;
-			2'b10: temp = colour_3;
-			2'b11: temp = colour_t;
+		case(memory_select) // Assign values to colour_b when using buffer
+			2'b00: colour = colour_1;
+			2'b01: colour = colour_2;
+			2'b10: colour = colour_3;
+			2'b11: colour = colour_t;
 		endcase
-		colour_b = black ? ((temp == TRANSPARENT) ? temp : 0) : temp;
 		
-		if((memory_select == 2'b11) & ~refreshing)
+		if(memory_select == 2'b11) // Check refreshing if using buffer
 			offset = {4'd0, offset_t[7:4], 5'd0, offset_t[3:0]};
 		else
 			offset = {offset_y, offset_x};
 	end
 	
+	/*
 	altsyncram	Buffer (
 				.wren_a (write_buffer),
 				.clock0 (clk), // read clock
 				.clocken0 (1'b1), // read enable clock
-				.address_a (adr_b),
+				.address_a (adr),
 				.data_a (colour_b),	// data in
 				.q_a (colour)		// data out
 				);
@@ -89,7 +76,7 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, black, 
 		Buffer.CLOCK_ENABLE_INPUT_A = "BYPASS",
 		Buffer.POWER_UP_UNINITIALIZED = "FALSE",
 		Buffer.INIT_FILE = "title.mif";
-	
+	*/
 	altsyncram	TitleScreen (
 				.wren_a (1'b0),
 				.clock0 (clk), // read clock
@@ -163,62 +150,48 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, black, 
 	           S_WAIT           = 4'b0001,
 	           S_SELECT         = 4'b0010,
 	           S_READ           = 4'b0011,
-	           S_DRAW           = 4'b0100,
-				  S_HOLD           = 4'b0101,
-	           S_INCREMENT      = 4'b0110,
-	           S_INCREMENT_2    = 4'b0111,
-	           S_FINISH         = 4'b1000,
-	           S_ENABLE_REFRESH = 4'b1001;
+	           S_DRAW_BUFFER    = 4'b0100,
+	           S_INCREMENT      = 4'b0101,
+	           S_INCREMENT_HOLD = 4'b0110,
+	           S_FINISH         = 4'b0111,
+	           S_ENABLE_REFRESH = 4'b1000,
+              S_DRAW           = 4'b1001;
 	
 	always @(*)
 	begin
 		case(Q)
 			S_RESET: Qn = S_WAIT;
-			S_WAIT:
-			begin
+			S_WAIT: Qn = go ? S_SELECT : S_WAIT;
+			/*begin
 				if(refresh)
 					Qn = S_ENABLE_REFRESH;
 				else if(go)
 					Qn = S_SELECT;
 				else
 					Qn = S_WAIT;
-			end
+			end*/
 			S_SELECT: Qn = S_READ;
-			S_READ: Qn = S_DRAW;
-			S_DRAW: Qn = S_HOLD;
-			S_HOLD: Qn = |hold ? S_DRAW : S_INCREMENT;
-			S_INCREMENT: Qn = S_INCREMENT_2;
-			S_INCREMENT_2: Qn = |offset ? S_SELECT : S_FINISH;
+			S_READ: Qn = S_DRAW; // refreshing ? S_DRAW : S_DRAW_BUFFER;
+			//S_DRAW_BUFFER: Qn = S_INCREMENT;
+			S_INCREMENT: Qn = S_INCREMENT_HOLD;
+			S_INCREMENT_HOLD: Qn = |offset ? S_SELECT : S_FINISH;
 			S_FINISH: Qn = S_RESET;
-			S_ENABLE_REFRESH: Qn = S_SELECT;
+			//S_ENABLE_REFRESH: Qn = S_SELECT;
+			S_DRAW: Qn = S_INCREMENT;
 		endcase
 	end
 	
 	always @(*)
 	begin
 		enable_count = 0;
-		enable_hold = 0;
 		write_en = 0;
-		write_buffer = 0;
-		finished = 0;
+		//write_buffer = 0;
+		finished = refresh; // Set to 0 if using buffer
 		case(Q)
-			S_DRAW:
-			begin
-				enable_hold = 1;
-				if(refreshing)
-					write_en = 1;
-				else
-					write_buffer = (colour_b != TRANSPARENT);
-			end
-			S_HOLD:
-			begin
-				if(refreshing)
-					write_en = 1;
-				else
-					write_buffer = (colour_b != TRANSPARENT);
-			end
+			S_DRAW: write_en = (colour != 6'b001100); // Change this if using buffer or changing colour bits
 			S_INCREMENT: enable_count = 1;
 			S_FINISH: finished = 1;
+			// S_DRAW_BUFFER: write_buffer = (colour_b != 6'b001100); // Change this when changing bits per colour
 		endcase
 	end
 	
@@ -228,7 +201,7 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, black, 
 			S_RESET:
 			begin
 				adr <= 0;
-				refreshing <= 0;
+				// refreshing <= 0;
 			end
 			S_SELECT:
 			begin
@@ -237,7 +210,7 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, black, 
 				else
 					adr <= (offset_y * WIDTH) + offset_x;
 			end
-			S_ENABLE_REFRESH: refreshing <= 1;
+			// S_ENABLE_REFRESH: refreshing <= 1;
 		endcase
 	end
 	
@@ -293,22 +266,3 @@ module count_xy(clk, reset_n, enable, max_x, max_y, q_x, q_y);
 	end
 endmodule
 
-module count_hold(clk, reset_n, enable, q);
-	input clk, reset_n, enable;
-	output reg [2:0] q;
-	
-	localparam HOLD_TIME = 2; // HOLD_TIME = Write hold time / 2
-	
-	always @(posedge clk)
-	begin
-		if(reset_n)
-			q <= 0;
-		else if(enable)
-		begin
-			if(q == (HOLD_TIME - 1))
-				q <= 0;
-			else
-				q <= q + 1;
-		end
-	end
-endmodule
