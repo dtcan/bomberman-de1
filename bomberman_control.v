@@ -7,8 +7,8 @@ module bomberman_control(
 	output reg game_reset,
 	output reg draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
 	output reg black, print_screen, read_input,
-	output [2:0] bomb_id,
-	output [1:0] p1_hp_id, p2_hp_id, corner_id,
+	output [2:0] bomb_id, corner_id,
+	output [1:0] p1_hp_id, p2_hp_id,
 	output refresh, // maybe let datapath have it's own internal clock
 	
 	input [1:0] p1_lives, p2_lives,
@@ -39,7 +39,7 @@ module bomberman_control(
 		.enable(dc_enable)
 		);
 	
-	// how often to redraw objects (for now moving sprites 4 times/ second)
+	// how often to redraw objects (for now moving sprites 4 times/ second).
 	frame_counter fc(
 		.out(refresh),
 		.clock(clock),
@@ -47,39 +47,44 @@ module bomberman_control(
 		.enable(clock_60Hz)
 		);
 	
-	bomb_counter bc(
+	// bomb counter.
+	counter_3bit bc(
 		.count(bomb_id),
-		.out(all_bombs_drawn),
+		.counted(all_bombs_drawn),
+		.count_to(3'd5),
 		.clock(clock),
 		.reset((reset | bc_reset)),
 		.enable(bc_enable)
 		);
-		
-	counter lc_p1(
+	
+	// corner counter.
+	counted_3bit cc(
+		.count(corner_id),
+		.counted(all_checked),
+		.count_to(3'd7),
+		.clock(clock),
+		.reset((reset | cc_reset)),
+		.enable(cc_enable)
+		);
+	
+	// p1 hearts counter.
+	counter_3bit lc_p1(
 		.count(p1_hp_id),
-		.out(all_P1HP_drawn),
-		.count_to(2'd2), // (p1_lives - 2'd1)
+		.counted(all_P1HP_drawn),
+		.count_to(3'd2), // (p1_lives - 2'd1)
 		.clock(clock),
 		.reset((reset | lc_reset)),
 		.enable(lc_p1_enable)
 		);
 	
-	counter lc_p2(
+	// p2 hearts counter.
+	counter_3bit lc_p2(
 		.count(p2_hp_id),
-		.out(all_P2HP_drawn),
-		.count_to(2'd2), // (p2_lives - 2'd1)
+		.counted(all_P2HP_drawn),
+		.count_to(3'd2), // (p2_lives - 2'd1)
 		.clock(clock),
 		.reset((reset | lc_reset)),
 		.enable(lc_p2_enable)
-		);
-		
-	counter corner(
-		.count(corner_id),
-		.out(all_checked),
-		.count_to(2'd3),
-		.clock(clock),
-		.reset((reset | cc_reset)),
-		.enable(cc_enable)
 		);
 		
 	// declare states``
@@ -435,13 +440,42 @@ endmodule
 // TODO combine the following two modules.
 // counter module for 6 bombs.
 // active high reset.
-module bomb_counter(count, out, clock, reset, enable);
+//module bomb_counter(count, out, clock, reset, enable);
+//	
+//	output reg [2:0] count;
+//	
+//	output out;
+//		
+//	input clock, reset, enable;
+//	
+//	always @ (posedge clock, posedge reset)
+//		begin
+//			if (reset)
+//				count <= 3'd0;
+//			else if (enable)
+//				begin
+//					if (count == 3'd5)
+//						count <= 3'd0;
+//					else
+//						count <= count + 3'd1;
+//				end
+//		end
+//		
+//	assign out = (count == 3'd5) ? 1'd1 : 1'd0;
+//	
+//endmodule
+
+// counter module that counts up to 7 (from 0) and outputs counted high when it does.
+// active high reset.
+module counter_3bit(
+
+	output reg [2:0] count,
+	output counted,
+
+	input [2:0] count_to,
+	input clock, reset, enable
 	
-	output reg [2:0] count;
-	
-	output out;
-		
-	input clock, reset, enable;
+	);
 	
 	always @ (posedge clock, posedge reset)
 		begin
@@ -449,41 +483,41 @@ module bomb_counter(count, out, clock, reset, enable);
 				count <= 3'd0;
 			else if (enable)
 				begin
-					if (count == 3'd5)
+					if (count == count_to)
 						count <= 3'd0;
 					else
 						count <= count + 3'd1;
 				end
 		end
 		
-	assign out = (count == 3'd5) ? 1'd1 : 1'd0;
+	assign counted = (count == count_to) ? 1'd1 : 1'd0;
 	
 endmodule
 
-// counter module that counts to count_to and sends finished signal when count is at count_to.
-// active high reset.
-module counter(count, out, count_to, clock, reset, enable);
-	
-	output reg [1:0] count;
-	
-	output out;
-	
-	input [1:0] count_to;
-	input clock, reset, enable;
-	
-	always @ (posedge clock, posedge reset)
-		begin
-			if (reset)
-				count <= 2'd0;
-			else if (enable)
-				begin
-					if (count == count_to)
-						count <= 2'd0;
-					else
-						count <= count + 2'd1;
-				end
-		end
-	
-	assign out = (count == count_to) ? 1'd1 : 1'd0;
-	
-endmodule
+//// counter module that counts to count_to and sends finished signal when count is at count_to.
+//// active high reset.
+//module counter(count, out, count_to, clock, reset, enable);
+//	
+//	output reg [1:0] count;
+//	
+//	output out;
+//	
+//	input [1:0] count_to;
+//	input clock, reset, enable;
+//	
+//	always @ (posedge clock, posedge reset)
+//		begin
+//			if (reset)
+//				count <= 2'd0;
+//			else if (enable)
+//				begin
+//					if (count == count_to)
+//						count <= 2'd0;
+//					else
+//						count <= count + 2'd1;
+//				end
+//		end
+//	
+//	assign out = (count == count_to) ? 1'd1 : 1'd0;
+//	
+//endmodule

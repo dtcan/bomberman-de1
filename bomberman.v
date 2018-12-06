@@ -43,8 +43,8 @@ module bomberman
 	wire p1_bomb, p2_bomb, p1_xdir, p2_xdir, p1_ydir, p2_ydir, p1_xmov, p2_xmov, p1_ymov, p2_ymov;
 	
 	// wires for control/datapath inputs/ outputs.
-	wire [2:0] bomb_id;
-	wire [1:0] memory_select, p1_hp_id, p2_hp_id, corner_id;
+	wire [2:0] bomb_id, corner_id;
+	wire [1:0] memory_select, p1_hp_id, p2_hp_id;
 	wire [1:0] p1_lives, p2_lives;
 	wire copy_enable, tc_enable, game_reset;
 	wire draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp;
@@ -122,9 +122,9 @@ module bomberman
 		.draw_p2(draw_p2),
 		.draw_p2_hp(draw_p2_hp),
 		.bomb_id(bomb_id),
+		.corner_id(corner_id),
 		.p1_hp_id(p1_hp_id),
 		.p2_hp_id(p2_hp_id),
-		.corner_id(corner_id),
 		.black(black),
 		.refresh(refresh),
 		.print_screen(print_screen),
@@ -150,10 +150,10 @@ module bomberman
 		.finished(finished),
 		.all_tiles_drawn(all_tiles_drawn),
 		.bomb_id(bomb_id),
+		.corner_id(corner_id),
 		.memory_select(memory_select),
 		.p1_hp_id(p1_hp_id),
 		.p2_hp_id(p2_hp_id),
-		.corner_id(corner_id),
 		.copy_enable(copy_enable),
 		.tc_enable(tc_enable),
 		.game_reset(game_reset),
