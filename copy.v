@@ -1,5 +1,5 @@
-module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, Y_out, colour, write_en, finished);
-	input clk, reset_n, go, refresh;
+module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, black, X_out, Y_out, colour, write_en, finished);
+	input clk, reset_n, go, refresh, black;
 	input [8:0] X;
 	input [7:0] Y;
 	input [1:0] memory_select;
@@ -11,8 +11,9 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 	
 	localparam WIDTH = 320, HEIGHT = 240; // Still have to go change bit-widths when changing these!
 	localparam BITS_PER_COLOUR = 2;       // When changing, also change colour reg and wire widths
+	localparam TRANSPARENT = 6'b001100;   // Change this when changing BITS_PER_COLOUR
 	
-	// reg [5:0] colour_b;
+	reg [5:0] temp; //colour_b;
 	wire [5:0] colour_1, colour_2, colour_3, colour_t;
 	wire [8:0] offset_x;
 	wire [7:0] offset_y;
@@ -46,11 +47,15 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 	always @(*)
 	begin
 		case(memory_select) // Assign values to colour_b when using buffer
-			2'b00: colour = colour_1;
-			2'b01: colour = colour_2;
-			2'b10: colour = colour_3;
-			2'b11: colour = colour_t;
+			2'b00: temp = colour_1;
+			2'b01: temp = colour_2;
+			2'b10: temp = colour_3;
+			2'b11: temp = colour_t;
 		endcase
+		if((temp != TRANSPARENT) & black)
+			colour = 0;
+		else
+			colour = temp;
 		
 		if(memory_select == 2'b11) // Check refreshing if using buffer
 			offset = {4'd0, offset_t[7:4], 5'd0, offset_t[3:0]};
@@ -188,10 +193,10 @@ module copy(clk, reset_n, go, refresh, X, Y, memory_select, tile_select, X_out, 
 		//write_buffer = 0;
 		finished = refresh; // Set to 0 if using buffer
 		case(Q)
-			S_DRAW: write_en = (colour != 6'b001100); // Change this if using buffer or changing colour bits
+			S_DRAW: write_en = (colour != TRANSPARENT); // Change this if using buffer or changing colour bits
 			S_INCREMENT: enable_count = 1;
 			S_FINISH: finished = 1;
-			// S_DRAW_BUFFER: write_buffer = (colour_b != 6'b001100); // Change this when changing bits per colour
+			// S_DRAW_BUFFER: write_buffer = (colour_b != TRANSPARENT); // Change this when changing bits per colour
 		endcase
 	end
 	
@@ -266,3 +271,22 @@ module count_xy(clk, reset_n, enable, max_x, max_y, q_x, q_y);
 	end
 endmodule
 
+module count_hold(clk, reset_n, enable, q);
+	input clk, reset_n, enable;
+	output reg [2:0] q;
+	
+	localparam HOLD_TIME = 2; // HOLD_TIME = Write hold time / 2
+	
+	always @(posedge clk)
+	begin
+		if(reset_n)
+			q <= 0;
+		else if(enable)
+		begin
+			if(q == (HOLD_TIME - 1))
+				q <= 0;
+			else
+				q <= q + 1;
+		end
+	end
+endmodule
