@@ -155,7 +155,7 @@ module bomberman_control(
 				READ_P2_INPUT:			next_state = SEND_P2_INPUT;
 				SEND_P2_INPUT:			next_state = GAME_IDLE;
 				GAME_IDLE:				next_state = clock_60Hz			? UPDATE_STAGE : GAME_IDLE;	 			// loop in GAME_IDLE until delay is complete.				
-				UPDATE_STAGE:																						 	 			// loop back to DRAW_TILE until a Player is killed after updating stage.
+				UPDATE_STAGE:							// ^ try using refresh instead?															 	 			// loop back to DRAW_TILE until a Player is killed after updating stage.
 					begin
 						if (game_over)
 							next_state = LOAD_WIN_SCREEN;

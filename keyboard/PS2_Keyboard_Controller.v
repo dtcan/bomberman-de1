@@ -123,7 +123,7 @@ module keyboard_tracker #(parameter PULSE_OR_HOLD = 0) (
 	 
 	 output w, a, s, d,
 	 output left, right, up, down,
-	 output space, enter
+	 output space, b, enter
 	 );
 	 
 	 // A flag indicating when the keyboard has sent a new byte.
@@ -151,6 +151,7 @@ module keyboard_tracker #(parameter PULSE_OR_HOLD = 0) (
 					UP_CODE    = 8'h75,
 					DOWN_CODE  = 8'h72,
 					SPACE_CODE = 8'h29,
+					B_CODE 	  = 8'h32,
 					ENTER_CODE = 8'h5a;
 					
     reg [1:0] curr_state;
@@ -160,7 +161,7 @@ module keyboard_tracker #(parameter PULSE_OR_HOLD = 0) (
 	 // TODO: ADD TO HERE WHEN IMPLEMENTING NEW KEYS	 
     reg w_press, a_press, s_press, d_press;
 	 reg left_press, right_press, up_press, down_press;
-	 reg space_press, enter_press;
+	 reg space_press, b_press, enter_press;
 	 
 	 // Lock signals prevent a key press signal from going high for more than one
 	 // clock tick when pulse mode is enabled. A key becomes 'locked' as soon as
@@ -168,7 +169,7 @@ module keyboard_tracker #(parameter PULSE_OR_HOLD = 0) (
 	 // TODO: ADD TO HERE WHEN IMPLEMENTING NEW KEYS
 	 reg w_lock, a_lock, s_lock, d_lock;
 	 reg left_lock, right_lock, up_lock, down_lock;
-	 reg space_lock, enter_lock;
+	 reg space_lock, b_lock, enter_lock;
 	 
 	 // Output is equal to the key press wires in mode 0 (hold), and is similar in
 	 // mode 1 (pulse) except the signal is lowered when the key's lock goes high.
@@ -184,6 +185,7 @@ module keyboard_tracker #(parameter PULSE_OR_HOLD = 0) (
     assign down  = down_press && ~(down_lock && PULSE_OR_HOLD);
 
     assign space = space_press && ~(space_lock && PULSE_OR_HOLD);
+	 assign b 	  = b_press && ~(b_lock && PULSE_OR_HOLD);
     assign enter = enter_press && ~(enter_lock && PULSE_OR_HOLD);
 	 
 	 // Core PS/2 driver.
@@ -217,6 +219,7 @@ module keyboard_tracker #(parameter PULSE_OR_HOLD = 0) (
 		  down_lock <= down_press;
 		  
 		  space_lock <= space_press;
+		  b_lock     <= b_press;
 		  enter_lock <= enter_press;
 		  
 	     if (~reset) begin
@@ -232,6 +235,7 @@ module keyboard_tracker #(parameter PULSE_OR_HOLD = 0) (
 				up_press    <= 1'b0;
 				down_press  <= 1'b0;
 				space_press <= 1'b0;
+				b_press		<= 1'b0;
 				enter_press <= 1'b0;
 				
 				w_lock <= 1'b0;
@@ -243,6 +247,7 @@ module keyboard_tracker #(parameter PULSE_OR_HOLD = 0) (
 				up_lock    <= 1'b0;
 				down_lock  <= 1'b0;
 				space_lock <= 1'b0;
+				b_lock	  <= 1'b0;
 				enter_lock <= 1'b0;
         end
 		  else if (byte_received) begin
@@ -262,6 +267,7 @@ module keyboard_tracker #(parameter PULSE_OR_HOLD = 0) (
 					 DOWN_CODE:  down_press  <= curr_state == MAKE;
 					 
 					 SPACE_CODE: space_press <= curr_state == MAKE;
+					 B_CODE:		 b_press		 <= curr_state == MAKE;
 					 ENTER_CODE: enter_press <= curr_state == MAKE;
 
 					 // State transition logic.
@@ -330,33 +336,33 @@ endmodule
  * Tester module for mode 0 (hold) mode. LED's on the board should turn on whenever
  * the corresponding key is pressed, and turn off when the key is released.
  */ 
-module keyboard_interface_test_mode0(
-    input CLOCK_50,
-	 input [3:0] KEY,
-	 
-	 inout PS2_CLK,
-	 inout PS2_DAT,
-	 
-	 output [9:0] LEDR
-	 );
-	 
-	 keyboard_tracker #(.PULSE_OR_HOLD(0)) tester(
-	     .clock(CLOCK_50),
-		  .reset(KEY[0]),
-		  .PS2_CLK(PS2_CLK),
-		  .PS2_DAT(PS2_DAT),
-		  .w(LEDR[4]),
-		  .a(LEDR[5]),
-		  .s(LEDR[6]),
-		  .d(LEDR[7]),
-		  .left(LEDR[0]),
-		  .right(LEDR[1]),
-		  .up(LEDR[2]),
-		  .down(LEDR[3]),
-		  .space(LEDR[8]),
-		  .enter(LEDR[9])
-		  );
-endmodule
+//module keyboard_interface_test_mode0(
+//    input CLOCK_50,
+//	 input [3:0] KEY,
+//	 
+//	 inout PS2_CLK,
+//	 inout PS2_DAT,
+//	 
+//	 output [9:0] LEDR
+//	 );
+//	 
+//	 keyboard_tracker #(.PULSE_OR_HOLD(0)) tester(
+//	     .clock(CLOCK_50),
+//		  .reset(KEY[0]),
+//		  .PS2_CLK(PS2_CLK),
+//		  .PS2_DAT(PS2_DAT),
+//		  .w(LEDR[4]),
+//		  .a(LEDR[5]),
+//		  .s(LEDR[6]),
+//		  .d(LEDR[7]),
+//		  .left(LEDR[0]),
+//		  .right(LEDR[1]),
+//		  .up(LEDR[2]),
+//		  .down(LEDR[3]),
+//		  .space(LEDR[8]),
+//		  .enter(LEDR[9])
+//		  );
+//endmodule
 
 
 /**
@@ -364,99 +370,99 @@ endmodule
  * as the corresponding key is pressed down. Holding a key should not continue
  * to change the output, nor should the output change on key release.
  */ 
-module keyboard_interface_test_mode1(
-    input CLOCK_50,
-	 input [3:0] KEY,
-	 
-	 inout PS2_CLK,
-	 inout PS2_DAT,
-	 
-	 output [9:0] LEDR
-	 );
-	 
-	 // Wires representing direct output from the keyboard controller.
-	 wire w_pulse,
-	      a_pulse,
-			s_pulse,
-			d_pulse,
-			left_pulse,
-			right_pulse,
-			up_pulse,
-			down_pulse,
-			space_pulse,
-			enter_pulse;
-			
-    // Registers holding the values displayed on the LEDs.
-    reg  w_tot,
-	      a_tot,
-			s_tot,
-			d_tot,
-			left_tot,
-			right_tot,
-			up_tot,
-			down_tot,
-			space_tot,
-			enter_tot;
-
-    assign LEDR[4] = w_tot;
-	 assign LEDR[5] = a_tot;
-	 assign LEDR[6] = s_tot;
-	 assign LEDR[7] = d_tot;
-	 assign LEDR[0] = left_tot;
-	 assign LEDR[1] = right_tot;
-	 assign LEDR[2] = up_tot;
-	 assign LEDR[3] = down_tot;
-	 assign LEDR[8] = space_tot;
-	 assign LEDR[9] = enter_tot;
-	 
-	 keyboard_tracker #(.PULSE_OR_HOLD(1)) tester_mode1(
-	     .clock(CLOCK_50),
-		  .reset(KEY[0]),
-		  .PS2_CLK(PS2_CLK),
-		  .PS2_DAT(PS2_DAT),
-		  .w(w_pulse),
-		  .a(a_pulse),
-		  .s(s_pulse),
-		  .d(d_pulse),
-		  .left(left_pulse),
-		  .right(right_pulse),
-		  .up(up_pulse),
-		  .down(down_pulse),
-		  .space(space_pulse),
-		  .enter(enter_pulse)
-		  );
-
-    always @(posedge CLOCK_50) begin
-	     if (~KEY[0]) begin
-		      // Reset signal
-		      w_tot <= 1'b0;
-				a_tot <= 1'b0;
-				s_tot <= 1'b0;
-				d_tot <= 1'b0;
-				
-				left_tot  <= 1'b0;
-				right_tot <= 1'b0;
-				up_tot    <= 1'b0;
-				down_tot  <= 1'b0;
-				
-				space_tot <= 1'b0;
-				enter_tot <= 1'b0;
-		  end
-		  else begin
-		      // State display wires (xxx_tot) flip values when their
-				// corresponding key is pressed.
-	         w_tot <= w_tot + w_pulse;
-		      a_tot <= a_tot + a_pulse;
-		      s_tot <= s_tot + s_pulse;
-		      d_tot <= d_tot + d_pulse;
-				
-		      left_tot <= left_tot + left_pulse;
-		      right_tot <= right_tot + right_pulse;
-		      up_tot <= up_tot + up_pulse;
-		      down_tot <= down_tot + down_pulse;
-				
-		      space_tot <= space_tot + space_pulse;
-		      enter_tot <= enter_tot + enter_pulse;
-		  end
-    end
-endmodule
+//module keyboard_interface_test_mode1(
+//    input CLOCK_50,
+//	 input [3:0] KEY,
+//	 
+//	 inout PS2_CLK,
+//	 inout PS2_DAT,
+//	 
+//	 output [9:0] LEDR
+//	 );
+//	 
+//	 // Wires representing direct output from the keyboard controller.
+//	 wire w_pulse,
+//	      a_pulse,
+//			s_pulse,
+//			d_pulse,
+//			left_pulse,
+//			right_pulse,
+//			up_pulse,
+//			down_pulse,
+//			space_pulse,
+//			enter_pulse;
+//			
+//    // Registers holding the values displayed on the LEDs.
+//    reg  w_tot,
+//	      a_tot,
+//			s_tot,
+//			d_tot,
+//			left_tot,
+//			right_tot,
+//			up_tot,
+//			down_tot,
+//			space_tot,
+//			enter_tot;
+//
+//    assign LEDR[4] = w_tot;
+//	 assign LEDR[5] = a_tot;
+//	 assign LEDR[6] = s_tot;
+//	 assign LEDR[7] = d_tot;
+//	 assign LEDR[0] = left_tot;
+//	 assign LEDR[1] = right_tot;
+//	 assign LEDR[2] = up_tot;
+//	 assign LEDR[3] = down_tot;
+//	 assign LEDR[8] = space_tot;
+//	 assign LEDR[9] = enter_tot;
+//	 
+//	 keyboard_tracker #(.PULSE_OR_HOLD(1)) tester_mode1(
+//	     .clock(CLOCK_50),
+//		  .reset(KEY[0]),
+//		  .PS2_CLK(PS2_CLK),
+//		  .PS2_DAT(PS2_DAT),
+//		  .w(w_pulse),
+//		  .a(a_pulse),
+//		  .s(s_pulse),
+//		  .d(d_pulse),
+//		  .left(left_pulse),
+//		  .right(right_pulse),
+//		  .up(up_pulse),
+//		  .down(down_pulse),
+//		  .space(space_pulse),
+//		  .enter(enter_pulse)
+//		  );
+//
+//    always @(posedge CLOCK_50) begin
+//	     if (~KEY[0]) begin
+//		      // Reset signal
+//		      w_tot <= 1'b0;
+//				a_tot <= 1'b0;
+//				s_tot <= 1'b0;
+//				d_tot <= 1'b0;
+//				
+//				left_tot  <= 1'b0;
+//				right_tot <= 1'b0;
+//				up_tot    <= 1'b0;
+//				down_tot  <= 1'b0;
+//				
+//				space_tot <= 1'b0;
+//				enter_tot <= 1'b0;
+//		  end
+//		  else begin
+//		      // State display wires (xxx_tot) flip values when their
+//				// corresponding key is pressed.
+//	         w_tot <= w_tot + w_pulse;
+//		      a_tot <= a_tot + a_pulse;
+//		      s_tot <= s_tot + s_pulse;
+//		      d_tot <= d_tot + d_pulse;
+//				
+//		      left_tot <= left_tot + left_pulse;
+//		      right_tot <= right_tot + right_pulse;
+//		      up_tot <= up_tot + up_pulse;
+//		      down_tot <= down_tot + down_pulse;
+//				
+//		      space_tot <= space_tot + space_pulse;
+//		      enter_tot <= enter_tot + enter_pulse;
+//		  end
+//    end
+//endmodule

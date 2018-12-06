@@ -7,14 +7,16 @@ module keyboard_decoder(
 	output reg p1_ydir, p2_ydir,	// 0: moving UP in y direction,		1: moving DOWN in y direction.
 	output reg p1_xmov, p2_xmov,	// 0: NOT moving in x direction, 	1: moving in x direction.
 	output reg p1_ymov, p2_ymov,	// 0: NOT moving in y direction, 	1: moving in y direction.
+	output reg start_game,			// 0: don't start							1: start game.
 	
 	inout PS2_CLK, PS2_DAT,
 	
 	input clock, reset
 	);
 	
-	wire w, a, s, d, space;
+	wire w, a, s, d, b;
 	wire up, left, down, right, enter;
+	wire space;
 	
 	// module for tracking keyboard input.
 	keyboard_tracker #(.PULSE_OR_HOLD(0)) kb(
@@ -31,6 +33,7 @@ module keyboard_decoder(
 		  .up(up),
 		  .down(down),
 		  .space(space),
+		  .b(b),
 		  .enter(enter)
 		  );
 	
@@ -38,7 +41,7 @@ module keyboard_decoder(
 	always @(*)
 		begin
 			// for player 1.
-			p1_bomb <= space;
+			p1_bomb <= b;
 			p1_xdir <= d ? d : ~a;
 			p1_xmov <= (a | d);
 			p1_ydir <= s ? s : ~w; 
@@ -50,6 +53,9 @@ module keyboard_decoder(
 			p2_xmov <= (left | right);
 			p2_ydir <= down ? down : ~up;
 			p2_ymov <= (up | down);
+			
+			// for game start.
+			start_game <= space;
 		end
 
 endmodule

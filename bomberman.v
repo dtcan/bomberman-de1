@@ -41,6 +41,7 @@ module bomberman
 	
 	// wires for user input from keyboard.
 	wire p1_bomb, p2_bomb, p1_xdir, p2_xdir, p1_ydir, p2_ydir, p1_xmov, p2_xmov, p1_ymov, p2_ymov;
+	wire start_game;
 	
 	// wires for control/datapath inputs/ outputs.
 	wire [2:0] bomb_id, corner_id;
@@ -100,6 +101,7 @@ module bomberman
 		.p2_xmov(p2_xmov),
 		.p1_ymov(p1_ymov),
 		.p2_ymov(p2_ymov),
+		.start_game(start_game),
 		.PS2_CLK(PS2_CLK),
 		.PS2_DAT(PS2_DAT),
 		.clock(CLOCK_50),
@@ -138,7 +140,7 @@ module bomberman
 		.send_p2_input(send_p2_input),
 		.p1_lives(p1_lives),
 		.p2_lives(p2_lives),
-		.go(p1_bomb),
+		.go(start_game),
 		.finished(finished),
 		.all_tiles_drawn(all_tiles_drawn),
 		.clock(CLOCK_50),
