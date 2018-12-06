@@ -47,7 +47,8 @@ module bomberman
 	wire [1:0] memory_select, p1_hp_id, p2_hp_id;
 	wire [1:0] p1_lives, p2_lives;
 	wire copy_enable, tc_enable, game_reset;
-	wire draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp;
+	wire draw_stage, draw_tile, draw_explosion, draw_bomb, draw_p1, draw_p1_hp, draw_p2, draw_p2_hp;
+	wire set_p1, check_p1, set_p2, check_p2;
 	wire black, refresh, print_screen, read_input, send_input;
 	wire finished, all_tiles_drawn;
 	
@@ -115,9 +116,11 @@ module bomberman
 		.draw_tile(draw_tile),
 		.draw_explosion(draw_explosion),
 		.draw_bomb(draw_bomb),
+		.set_p1(set_p1),
 		.check_p1(check_p1),
 		.draw_p1(draw_p1),
 		.draw_p1_hp(draw_p1_hp),
+		.set_p2(set_p2),
 		.check_p2(check_p2),
 		.draw_p2(draw_p2),
 		.draw_p2_hp(draw_p2_hp),
@@ -162,9 +165,11 @@ module bomberman
 		.draw_tile(draw_tile),
 		.draw_explosion(draw_explosion),
 		.draw_bomb(draw_bomb),
+		.set_p1(set_p1),
 		.check_p1(check_p1),
 		.draw_p1(draw_p1),
 		.draw_p1_hp(draw_p1_hp),
+		.set_p2(set_p2),
 		.check_p2(check_p2),
 		.draw_p2(draw_p2),
 		.draw_p2_hp(draw_p2_hp),

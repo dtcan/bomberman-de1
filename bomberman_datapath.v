@@ -17,7 +17,8 @@ module bomberman_datapath(
 	input [1:0] memory_select, p1_hp_id, p2_hp_id,
 	input copy_enable, tc_enable,
 	input game_reset,
-	input draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
+	input draw_stage, draw_tile, draw_explosion, draw_bomb, draw_p1, draw_p1_hp, draw_p2, draw_p2_hp,
+	input set_p1, check_p1, set_p2, check_p2,
 	input black, refresh, print_screen, read_input, send_input,
 	
 	// signals from keyboard.
@@ -232,7 +233,7 @@ module bomberman_datapath(
 					bomb_X <= 9'd72 + {1'b0, tile_count_x, 4'b0000}; // multiply tile_count_x by 16
 					bomb_Y <= 8'd32 + {tile_count_y, 4'b0000};		 // multiply tile_count_y by 16
 				end
-			else if (check_p1)
+			else if (set_p1)
 				begin
 					if (corner_id [2])
 						begin
@@ -244,6 +245,9 @@ module bomberman_datapath(
 							bomb_X <= p1_X + (9'd15 * corner_id [0]);
 							bomb_Y <= corner_id [1] ? (p1_Y + 9'd1 + (9'd15 * corner_id [1])) : (p1_Y - 9'd1 + (9'd15 * corner_id [1]));
 						end
+				end
+			else if (check_p1)
+				begin
 					if (has_explosion & !p1_is_invincible)
 						begin
 							p1_lives <= p1_lives - 1'd1;
@@ -325,18 +329,21 @@ module bomberman_datapath(
 							end
 					endcase
 				end
-			else if (check_p2)
+			else if (set_p2)
 				begin
 					if (corner_id [2])
-						begin
-							bomb_X <= corner_id [1] ? (p2_X + 9'd1 + (9'd15 * corner_id [1])) : (p2_X - 9'd1 + (9'd15 * corner_id [1]));
-							bomb_Y <= p2_Y + (9'd15 * corner_id [0]);
-						end
-					else if (!corner_id [2])
-						begin
-							bomb_X <= p2_X + (9'd15 * corner_id [0]);
-							bomb_Y <= corner_id [1] ? (p2_Y + 9'd1 + (9'd15 * corner_id [1])) : (p2_Y - 9'd1 + (9'd15 * corner_id [1]));
-						end
+							begin
+								bomb_X <= corner_id [1] ? (p2_X + 9'd1 + (9'd15 * corner_id [1])) : (p2_X - 9'd1 + (9'd15 * corner_id [1]));
+								bomb_Y <= p2_Y + (9'd15 * corner_id [0]);
+							end
+						else if (!corner_id [2])
+							begin
+								bomb_X <= p2_X + (9'd15 * corner_id [0]);
+								bomb_Y <= corner_id [1] ? (p2_Y + 9'd1 + (9'd15 * corner_id [1])) : (p2_Y - 9'd1 + (9'd15 * corner_id [1]));
+							end
+				end
+			else if (check_p2)
+				begin
 					if (has_explosion & !p2_is_invincible)
 						begin
 							p2_lives <= p2_lives - 1'd1;

@@ -5,7 +5,8 @@ module bomberman_control(
 	output reg [1:0] memory_select,
 	output reg copy_enable, tc_enable,
 	output reg game_reset,
-	output reg draw_stage, draw_tile, draw_explosion, draw_bomb, check_p1, draw_p1, draw_p1_hp, check_p2, draw_p2, draw_p2_hp,
+	output reg draw_stage, draw_tile, draw_explosion, draw_bomb, draw_p1, draw_p1_hp, draw_p2, draw_p2_hp,
+	output reg set_p1, check_p1, set_p2, check_p2,
 	output reg black, print_screen, read_input, send_input,
 	output [2:0] bomb_id, corner_id,
 	output [1:0] p1_hp_id, p2_hp_id,
@@ -100,23 +101,25 @@ module bomberman_control(
 					UPDATE_TILE			 = 5'd7,	// update tile counter.
 					DRAW_BOMB			 = 5'd8,	// draw bomb tiles.
 					UPDATE_BOMB			 = 5'd9, // update bomb counter.
-					CHECK_P1_CORNER	 = 5'd10,// check tile of corner pixel.
-					UPDATE_P1_CORNER	 = 5'd11,// update corner pixel.
-					DRAW_P1				 = 5'd12,// draw player 1's sprite.
-					DRAW_P1_HP		 	 = 5'd13,// draw player 1's health.
-					UPDATE_P1_HP		 = 5'd14,// update player 1's health.
-					CHECK_P2_CORNER	 = 5'd15,// check tile of corner pixel.
-					UPDATE_P2_CORNER	 = 5'd16,// update corner pixel.
-					DRAW_P2				 = 5'd17,// draw player 2's sprite.
-					DRAW_P2_HP			 = 5'd18,// draw player 2's health.
-					UPDATE_P2_HP		 = 5'd19,// update player 2's health.
-					GAME_IDLE			 = 5'd20,// wait for delay.
-					READ_USER_INPUT	 = 5'd21,// get user input.
-					UPDATE_STAGE		 = 5'd22,// draw stage to VGA.
+					SET_P1_CORNER		 = 5'd10,// set tile of corner pixel.
+					CHECK_P1_CORNER	 = 5'd11,// check tile of corner pixel.
+					UPDATE_P1_CORNER	 = 5'd12,// update corner pixel.
+					DRAW_P1				 = 5'd13,// draw player 1's sprite.
+					DRAW_P1_HP		 	 = 5'd14,// draw player 1's health.
+					UPDATE_P1_HP		 = 5'd15,// update player 1's health.
+					SET_P2_CORNER		 = 5'd16,// set tile of corner pixel.
+					CHECK_P2_CORNER	 = 5'd17,// check tile of corner pixel.
+					UPDATE_P2_CORNER	 = 5'd18,// update corner pixel.
+					DRAW_P2				 = 5'd19,// draw player 2's sprite.
+					DRAW_P2_HP			 = 5'd20,// draw player 2's health.
+					UPDATE_P2_HP		 = 5'd21,// update player 2's health.
+					GAME_IDLE			 = 5'd22,// wait for delay.
+					READ_USER_INPUT	 = 5'd23,// get user input.
+					UPDATE_STAGE		 = 5'd24,// draw stage to VGA.
 					
-					LOAD_WIN_SCREEN	 = 5'd23,// draw win screen background to buffer.
-					DISPLAY_WIN_SCREEN = 5'd24,// draw win screen background to VGA.
-					WIN_SCREEN			 = 5'd25;// wait for user input to return to title screen.
+					LOAD_WIN_SCREEN	 = 5'd25,// draw win screen background to buffer.
+					DISPLAY_WIN_SCREEN = 5'd26,// draw win screen background to VGA.
+					WIN_SCREEN			 = 5'd27;// wait for user input to return to title screen.
 
 	// state table
 	always @ (*)
@@ -131,12 +134,14 @@ module bomberman_control(
 				DRAW_EXPLOSION:		next_state = finished			? UPDATE_TILE : DRAW_EXPLOSION;			// loop in DRAW_EXPLOSION until finished drawing explosion on stage tile.
 				UPDATE_TILE:			next_state = all_tiles_drawn	? DRAW_BOMB : DRAW_TILE;		 			// loop back to DRAW_TILE until finished drawing all tiles.
 				DRAW_BOMB:				next_state = finished 			? UPDATE_BOMB : DRAW_BOMB;		 			// loop in DRAW_BOMB until finished drawing current bomb.
-				UPDATE_BOMB:			next_state = all_bombs_drawn	? CHECK_P1_CORNER : DRAW_BOMB; 			// loop back to DRAW_BOMB until finished drawing all bombs.
+				UPDATE_BOMB:			next_state = all_bombs_drawn	? SET_P1_CORNER : DRAW_BOMB; 				// loop back to DRAW_BOMB until finished drawing all bombs.
+				SET_P1_CORNER: 		next_state = CHECK_P1_CORNER;
 				CHECK_P1_CORNER:		next_state = UPDATE_P1_CORNER;										 	
 				UPDATE_P1_CORNER:		next_state = all_checked		? DRAW_P1 : CHECK_P1_CORNER;	 			// loop back to CHECK_P1_CORNER until all 4 corners are checked.
 				DRAW_P1:					next_state = finished			? DRAW_P1_HP : DRAW_P1;	 		 			// loop in DRAW_P1 until finished drawing Player 1's sprite.
 				DRAW_P1_HP:				next_state = finished			? UPDATE_P1_HP : DRAW_P1_HP;	 			// loop in DRAW_P1_HP until finished drawing current P1's HP.
-				UPDATE_P1_HP:			next_state = all_P1HP_drawn	? CHECK_P2_CORNER : DRAW_P1_HP;			// loop back to DRAW_P1_HP until finished drawing all P1's HPs.
+				UPDATE_P1_HP:			next_state = all_P1HP_drawn	? SET_P2_CORNER : DRAW_P1_HP;				// loop back to DRAW_P1_HP until finished drawing all P1's HPs.
+				SET_P2_CORNER: 		next_state = CHECK_P2_CORNER;
 				CHECK_P2_CORNER:		next_state = UPDATE_P2_CORNER;
 				UPDATE_P2_CORNER: 	next_state = all_checked		? DRAW_P2 : CHECK_P2_CORNER;	 			// loop back to CHECK_P2_CORNER until all 4 corners are checked.
 				DRAW_P2: 				next_state = finished 			? DRAW_P2_HP : DRAW_P2;			 			// loop in DRAW_P2 until finished drawing Player 2's sprite.
@@ -173,9 +178,11 @@ module bomberman_control(
 			draw_tile = 0;
 			draw_explosion = 0;
 			draw_bomb = 0;
+			set_p1 = 0;
 			check_p1 = 0;
 			draw_p1 = 0;
 			draw_p1_hp = 0;
+			set_p2 = 0;
 			check_p2 = 0;
 			draw_p2 = 0;
 			draw_p2_hp = 0;
@@ -264,6 +271,12 @@ module bomberman_control(
 						cc_reset = 1;
 					end
 				
+				SET_P1_CORNER:
+					begin
+						dc_enable = 1;
+						set_p1 = 1;
+					end
+					
 				CHECK_P1_CORNER:
 					begin
 						dc_enable = 1;
@@ -301,6 +314,12 @@ module bomberman_control(
 						lc_p1_enable = 1;
 						dc_enable = 1;
 						cc_reset = 1;
+					end
+				
+				SET_P2_CORNER:
+					begin
+						dc_enable = 1;
+						set_p2 = 1;
 					end
 				
 				CHECK_P2_CORNER:
