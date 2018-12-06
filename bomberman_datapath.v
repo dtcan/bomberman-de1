@@ -19,7 +19,7 @@ module bomberman_datapath(
 	input game_reset,
 	input draw_stage, draw_tile, draw_explosion, draw_bomb, draw_p1, draw_p1_hp, draw_p2, draw_p2_hp,
 	input set_p1, check_p1, set_p2, check_p2,
-	input black, refresh, print_screen, read_input, send_input,
+	input black, refresh, print_screen, read_p1_input, send_p1_input, read_p2_input, send_p2_input,
 	
 	// signals from keyboard.
 	input p1_bomb, p1_xdir, p1_xmov, p1_ydir, p1_ymov,
@@ -49,7 +49,7 @@ module bomberman_datapath(
 	wire [3:0] speed_limit;
 	wire [1:0] inv_length;
 	wire [1:0] bomb_limit, radius_limit, potency_limit;
-	assign inv_length = 2'd2; 							// set invincibility length of players to 2s.
+	assign inv_length = 2'd2; 											// set invincibility length of players to 2s.
 	assign speed_limit = 4'd8;											// set speed limit to (8 * 4) pixels per second.
 	assign bomb_limit = 2'd2; 											// set bomb limit to 3 per player (0 means 1).
 	assign radius_limit = 2'd2; 										// set explosion radius limit to 3 tiles per player.
@@ -147,8 +147,8 @@ module bomberman_datapath(
 		.Y(bomb_Y),
 		.statsP1(statsP1),
 		.statsP2(statsP2),
-		.placeP1((p1_bomb & send_input)),
-		.placeP2((p2_bomb & send_input)),
+		.placeP1((p1_bomb & send_p1_input)),
+		.placeP2((p2_bomb & send_p2_input)),
 		.destroy_tile(destroy_tile),
 		.bomb_id(bomb_id),
 		.bomb_info(bomb_info),
@@ -183,7 +183,7 @@ module bomberman_datapath(
 					p2_x_enable <= 0;
 					p2_y_enable <= 0;
 				end
-			else
+			else if (read_p1_input)
 				begin // check corners with respect to movement.
 					if (p1_xdir)
 						p1_x_enable <= (p1_is_passable[6] & p1_is_passable[7] & p1_xmov) ? 1'd1 : 1'd0;
@@ -193,6 +193,9 @@ module bomberman_datapath(
 						p1_y_enable <= (p1_is_passable[0] & p1_is_passable[1] & p1_ymov) ? 1'd1 : 1'd0;
 					else if (!p1_ydir)
 						p1_y_enable <= (p1_is_passable[2] & p1_is_passable[3] & p1_ymov) ? 1'd1 : 1'd0;
+				end
+			else if (read_p2_input)
+				begin
 					if (p2_xdir)
 						p2_x_enable <= (p2_is_passable[6] & p2_is_passable[7] & p2_xmov) ? 1'd1 : 1'd0;
 					else if (!p2_xdir)
@@ -427,13 +430,16 @@ module bomberman_datapath(
 							end
 					endcase
 				end
-			else if (read_input)
+			else if (read_p1_input)
 				begin
 					if (p1_bomb)
 						begin
 							bomb_X <= p1_X;
 							bomb_Y <= p1_Y [7:0];
 						end
+				end
+			else if (read_p2_input)
+				begin
 					if (p2_bomb)
 						begin
 							bomb_X <= p2_X;

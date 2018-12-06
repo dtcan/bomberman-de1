@@ -7,7 +7,7 @@ module bomberman_control(
 	output reg game_reset,
 	output reg draw_stage, draw_tile, draw_explosion, draw_bomb, draw_p1, draw_p1_hp, draw_p2, draw_p2_hp,
 	output reg set_p1, check_p1, set_p2, check_p2,
-	output reg black, print_screen, read_input, send_input,
+	output reg black, print_screen, read_p1_input, send_p1_input, read_p2_input, send_p2_input,
 	output [2:0] bomb_id, corner_id,
 	output [1:0] p1_hp_id, p2_hp_id,
 	output refresh, // maybe let datapath have it's own internal clock
@@ -88,7 +88,7 @@ module bomberman_control(
 		.enable(lc_p2_enable)
 		);
 		
-	// declare states``
+	// declare states
 	localparam	LOAD_TITLE			= 5'd0,	// draw title screen background to buffer.
 					DISPLAY_TITLE		= 5'd1,	// draw title screen background to VGA.
 					TITLE					= 5'd2,	// wait for user input to start game.
@@ -113,13 +113,16 @@ module bomberman_control(
 					DRAW_P2				 = 5'd19,// draw player 2's sprite.
 					DRAW_P2_HP			 = 5'd20,// draw player 2's health.
 					UPDATE_P2_HP		 = 5'd21,// update player 2's health.
-					GAME_IDLE			 = 5'd22,// wait for delay.
-					READ_USER_INPUT	 = 5'd23,// get user input.
-					UPDATE_STAGE		 = 5'd24,// draw stage to VGA.
+					READ_P1_INPUT	 	 = 5'd22,// get p1 user input.
+					SEND_P1_INPUT	 	 = 5'd23,// send p1 user input.
+					READ_P2_INPUT	 	 = 5'd24,// get p2 user input.
+					SEND_P2_INPUT	 	 = 5'd25,// send p2 user input.
+					GAME_IDLE			 = 5'd26,// wait for delay.
+					UPDATE_STAGE		 = 5'd27,// draw stage to VGA.
 					
-					LOAD_WIN_SCREEN	 = 5'd25,// draw win screen background to buffer.
-					DISPLAY_WIN_SCREEN = 5'd26,// draw win screen background to VGA.
-					WIN_SCREEN			 = 5'd27;// wait for user input to return to title screen.
+					LOAD_WIN_SCREEN	 = 5'd28,// draw win screen background to buffer.
+					DISPLAY_WIN_SCREEN = 5'd29,// draw win screen background to VGA.
+					WIN_SCREEN			 = 5'd30;// wait for user input to return to title screen.
 
 	// state table
 	always @ (*)
@@ -146,9 +149,12 @@ module bomberman_control(
 				UPDATE_P2_CORNER: 	next_state = all_checked		? DRAW_P2 : CHECK_P2_CORNER;	 			// loop back to CHECK_P2_CORNER until all 4 corners are checked.
 				DRAW_P2: 				next_state = finished 			? DRAW_P2_HP : DRAW_P2;			 			// loop in DRAW_P2 until finished drawing Player 2's sprite.
 				DRAW_P2_HP:				next_state = finished			? UPDATE_P2_HP : DRAW_P2_HP;	 			// loop in DRAW_P2_HP until finished drawing current P2's HP.
-				UPDATE_P2_HP:			next_state = all_P2HP_drawn	? GAME_IDLE : DRAW_P2_HP;	 	 			// loop back to DRAW_P2_HP until finished drawing all P2's HPs.
-				GAME_IDLE:				next_state = clock_60Hz			? UPDATE_STAGE : GAME_IDLE;	 			// loop in GAME_IDLE until delay is complete. 
-				READ_USER_INPUT:		next_state = UPDATE_STAGE;
+				UPDATE_P2_HP:			next_state = all_P2HP_drawn	? READ_P1_INPUT : DRAW_P2_HP;	 	 		// loop back to DRAW_P2_HP until finished drawing all P2's HPs.
+				READ_P1_INPUT:			next_state = SEND_P1_INPUT;
+				SEND_P1_INPUT:			next_state = READ_P2_INPUT;
+				READ_P2_INPUT:			next_state = SEND_P2_INPUT;
+				SEND_P2_INPUT:			next_state = GAME_IDLE;
+				GAME_IDLE:				next_state = clock_60Hz			? UPDATE_STAGE : GAME_IDLE;	 			// loop in GAME_IDLE until delay is complete.				
 				UPDATE_STAGE:																						 	 			// loop back to DRAW_TILE until a Player is killed after updating stage.
 					begin
 						if (game_over)
@@ -199,8 +205,10 @@ module bomberman_control(
 			cc_enable = 0;
 			
 			print_screen = 0;
-			read_input = 0;
-			send_input = 0;
+			read_p1_input = 0;
+			send_p1_input = 0;
+			read_p2_input = 0;
+			send_p2_input = 0;
 			
 			case (current_state)
 				LOAD_TITLE:
@@ -365,17 +373,29 @@ module bomberman_control(
 						dc_enable = 1;
 					end
 					
-				READ_USER_INPUT:
+				READ_P1_INPUT:
 					begin
-						dc_enable = 1;
-						read_input = 1;
+						read_p1_input = 1;
+					end
+				
+				SEND_P1_INPUT:
+					begin
+						send_p1_input = 1;
+					end
+					
+				READ_P2_INPUT:
+					begin
+						read_p2_input = 1;
+					end
+					
+				SEND_P2_INPUT:
+					begin
+						send_p2_input = 1;
 					end
 					
 				UPDATE_STAGE:
 					begin
-						dc_enable = 1;
 						print_screen = 1;
-						send_input = 1;
 					end
 					
 				LOAD_WIN_SCREEN:
@@ -465,34 +485,6 @@ module frame_counter(out, clock, reset, enable);
 
 endmodule
 
-// TODO combine the following two modules.
-// counter module for 6 bombs.
-// active high reset.
-//module bomb_counter(count, out, clock, reset, enable);
-//	
-//	output reg [2:0] count;
-//	
-//	output out;
-//		
-//	input clock, reset, enable;
-//	
-//	always @ (posedge clock, posedge reset)
-//		begin
-//			if (reset)
-//				count <= 3'd0;
-//			else if (enable)
-//				begin
-//					if (count == 3'd5)
-//						count <= 3'd0;
-//					else
-//						count <= count + 3'd1;
-//				end
-//		end
-//		
-//	assign out = (count == 3'd5) ? 1'd1 : 1'd0;
-//	
-//endmodule
-
 // counter module that counts up to 7 (from 0) and outputs counted high when it does.
 // active high reset.
 module counter_3bit(
@@ -521,31 +513,3 @@ module counter_3bit(
 	assign counted = (count == count_to) ? 1'd1 : 1'd0;
 	
 endmodule
-
-//// counter module that counts to count_to and sends finished signal when count is at count_to.
-//// active high reset.
-//module counter(count, out, count_to, clock, reset, enable);
-//	
-//	output reg [1:0] count;
-//	
-//	output out;
-//	
-//	input [1:0] count_to;
-//	input clock, reset, enable;
-//	
-//	always @ (posedge clock, posedge reset)
-//		begin
-//			if (reset)
-//				count <= 2'd0;
-//			else if (enable)
-//				begin
-//					if (count == count_to)
-//						count <= 2'd0;
-//					else
-//						count <= count + 2'd1;
-//				end
-//		end
-//	
-//	assign out = (count == count_to) ? 1'd1 : 1'd0;
-//	
-//endmodule
