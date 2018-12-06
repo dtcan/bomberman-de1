@@ -58,7 +58,7 @@ module bomberman_datapath(
 
 	coordinate_counter player_1_X(
 		.next_coord(p1_X),
-		.start_coord(9'd72),
+		.start_coord(9'd88),
 		.min_coord(9'd72),
 		.max_coord(9'd232),
 		.increment(p1_speed),
@@ -84,7 +84,7 @@ module bomberman_datapath(
 		
 	coordinate_counter player_2_X(
 		.next_coord(p2_X),
-		.start_coord(9'd232),
+		.start_coord(9'd216),
 		.min_coord(9'd72),
 		.max_coord(9'd232),
 		.increment(p2_speed),
