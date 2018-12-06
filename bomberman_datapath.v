@@ -487,7 +487,7 @@ module bomberman_datapath(
 						begin
 							copy_X <= p2_X;
 							copy_Y <= p2_Y [7:0];
-							tile_select <= p2_is_invincible ? 4'd14 : 4'd12;
+							tile_select <= p2_is_invincible ? 4'd15 : 4'd13;
 						end
 					if (draw_p2_hp)
 						begin
