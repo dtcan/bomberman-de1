@@ -475,7 +475,7 @@ module bomberman_datapath(
 						end
 					if (draw_p2_hp)
 						begin
-							copy_X <= 9'd256 + (9'd20 * p1_hp_id);
+							copy_X <= 9'd256 + (9'd20 * p2_hp_id);
 							copy_Y <= 8'd112;
 							tile_select <= 4'd9;
 						end
