@@ -58,7 +58,7 @@ module bomberman_control(
 		);
 	
 	// corner counter.
-	counted_3bit cc(
+	counter_3bit cc(
 		.count(corner_id),
 		.counted(all_checked),
 		.count_to(3'd7),

@@ -234,8 +234,16 @@ module bomberman_datapath(
 				end
 			else if (check_p1)
 				begin
-					bomb_X <= p1_X + (9'd15 * corner_id [0]);
-					bomb_Y <= p1_Y + (9'd15 * corner_id [1]);
+					if (corner_id [2])
+						begin
+							bomb_X <= corner_id [1] ? (p1_X + 9'd1 + (9'd15 * corner_id [1])) : (p1_X - 9'd1 + (9'd15 * corner_id [1]));
+							bomb_Y <= p1_Y + (9'd15 * corner_id [0]);
+						end
+					else if (!corner_id [2])
+						begin
+							bomb_X <= p1_X + (9'd15 * corner_id [0]);
+							bomb_Y <= corner_id [1] ? (p1_Y + 9'd1 + (9'd15 * corner_id [1])) : (p1_Y - 9'd1 + (9'd15 * corner_id [1]));
+						end
 					if (has_explosion & !p1_is_invincible)
 						begin
 							p1_lives <= p1_lives - 1'd1;
@@ -319,8 +327,16 @@ module bomberman_datapath(
 				end
 			else if (check_p2)
 				begin
-					bomb_X <= p2_X + (9'd15 * corner_id [0]);
-					bomb_Y <= p2_Y + (9'd15 * corner_id [1]);
+					if (corner_id [2])
+						begin
+							bomb_X <= corner_id [1] ? (p2_X + 9'd1 + (9'd15 * corner_id [1])) : (p2_X - 9'd1 + (9'd15 * corner_id [1]));
+							bomb_Y <= p2_Y + (9'd15 * corner_id [0]);
+						end
+					else if (!corner_id [2])
+						begin
+							bomb_X <= p2_X + (9'd15 * corner_id [0]);
+							bomb_Y <= corner_id [1] ? (p2_Y + 9'd1 + (9'd15 * corner_id [1])) : (p2_Y - 9'd1 + (9'd15 * corner_id [1]));
+						end
 					if (has_explosion & !p2_is_invincible)
 						begin
 							p2_lives <= p2_lives - 1'd1;
