@@ -3,9 +3,9 @@ A simple game inspired by Bomberman, written in Verilog for an Altera DE1 board
 
 ## Compiling and Running
 1. Clone the repository using the following command in Terminal or Command Prompt, which will create a folder named 'bomberman-de1'
-...
+```
 git clone https://github.com/dtcan/bomberman-de1.git
-...
+```
 2. Open Quartus Prime, and press 'Ctrl+N' to create a new project.
 3. Set the 'bomberman-de1' folder as the working directory. The project name and top-level module is 'bomberman'. Click 'Next'.
 4. Select 'Empty project' and click 'Next'.
